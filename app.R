@@ -13,11 +13,11 @@ header <- dashboardHeader(title = "REALTO dashboard")
 
 sidebar <- dashboardSidebar(
   sidebarMenu(
+    menuItem("Most active flows", tabName = "flows", icon = icon("th")),
     menuItem("All activity", tabName = "activity", icon = icon("dashboard")),
     menuItem("New posts", tabName = "posts", icon = icon("th")),
     menuItem("Unique users by month", tabName = "uniqueUsers", icon = icon("th")),
     menuItem("Most active users", tabName = "mostActive", icon = icon("th")),
-    menuItem("Most active flows", tabName = "flows", icon = icon("th")),
     menuItem("REALTO", icon = icon("file-code-o"), 
              href = "https://www.realto.ch")
   )
@@ -102,8 +102,8 @@ server <- function(input, output) {
       }
     }
 
-    query = paste0("SELECT a.date::DATE, u.role_id, count(a.*) AS n FROM user_activity_logs a LEFT JOIN users u ON a.user_id = u._id ", profq, langq," GROUP BY date::date, u.role_id")
-    queryall = paste0("SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs a LEFT JOIN users u ON a.user_id = u._id ", profq, langq," GROUP BY date::date")
+    query = paste0("SELECT a.date::DATE, u.role_id, count(a.*) AS n FROM user_activity_logs_cleaner a LEFT JOIN users u ON a.user_id = u._id ", profq, langq," GROUP BY date::date, u.role_id")
+    queryall = paste0("SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner a LEFT JOIN users u ON a.user_id = u._id ", profq, langq," GROUP BY date::date")
     pcount = dbGetQuery(con, query)
     pall = dbGetQuery(con, queryall)
     if(nrow(pall) == 0) {
