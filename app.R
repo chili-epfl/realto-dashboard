@@ -106,6 +106,19 @@ body <- dashboardBody(tabItems(
           "Teacher"="teacher",
           "Supervisor"="supervisor"
         )
+      ),
+      radioButtons(
+        "postType",
+        "Post type",
+        c(
+          "All"="all",
+          "activity"="activity",
+          "activitySubmission"="activitySubmission",
+          "learnDoc"="learnDoc",
+          "learningJournal"="learningJournal",
+          "standard"="standard",
+          "standardLd"="standardLd"
+        )
       )
     ),
     htmlOutput("postsql")
@@ -191,8 +204,11 @@ server <- function(input, output) {
   })
 
   # new posts
-  postsql = reactive({ paste(users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost),
-    "select p.CREATED_AT::date as n, count(p.*) FROM posts p INNER JOIN users_sub u on u._id = p.owner_id GROUP BY p.created_at::date", sep=' ')
+  postsql = reactive({ 
+    typeq = if(input$postType != 'all') paste0(" WHERE p.post_type LIKE '", input$postType, "' ") else ""
+    
+    paste(users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost),
+          "select p.CREATED_AT::date as n, count(p.*) FROM posts p INNER JOIN users_sub u on u._id = p.owner_id", typeq, " GROUP BY p.created_at::date", sep=' ')
   })
   
   output$postsql = reactive({ postsql() })
