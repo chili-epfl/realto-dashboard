@@ -75,9 +75,9 @@ body <- dashboardBody(tabItems(
     tabName = "posts",
     dygraphOutput("rollerPost"),
     flowLayout(
-      sliderInput("rollPeriod", "Smoothing:", 1, 100, 1),
+      sliderInput("rollPeriodpost", "Smoothing:", 1, 100, 1),
       radioButtons(
-        "activityProf",
+        "activityProfpost",
         "Professions",
         c(
           "All" = "all",
@@ -88,7 +88,7 @@ body <- dashboardBody(tabItems(
         )
       ),
       radioButtons(
-        "activityLang",
+        "activityLangpost",
         "Languages",
         c(
           "All" = "all",
@@ -98,7 +98,7 @@ body <- dashboardBody(tabItems(
         )
       ),
       radioButtons(
-        "userRole",
+        "userRolepost",
         "User role",
         c(
           "All"="all",
@@ -153,18 +153,19 @@ server <- function(input, output) {
   localeq = function(x) { paste0("u.locale LIKE '", x, "'") }
   uroleq = function(x) { paste0("u.role_id LIKE '", x, "'") }
   
-  users_sub = function(){    
+  users_sub = function(activityLang, userRole, activityProf){    
+    
     conditions = c(
-      (if (input$activityLang != 'all') localeq(input$activityLang) else NULL),
-      (if (input$userRole != 'all') uroleq(input$userRole) else NULL),
-      (if (input$activityProf != 'all') professionq(input$activityProf) else NULL)
+      (if (activityLang != 'all') localeq(activityLang) else NULL),
+      (if (userRole != 'all') uroleq(userRole) else NULL),
+      (if (activityProf != 'all') professionq(activityProf) else NULL)
     )
     conditions = paste(conditions, collapse=' AND ')
     conditions = if(nchar(conditions) > 0) paste0("WHERE ", conditions) else ''
     paste('WITH users_sub as (select u.*, p.name from users u LEFT JOIN professions p ON u.profession_id = p._id ', conditions,  ")", sep=" ")
   }
   activitySql = reactive({
-    paste(users_sub(), "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner_m a RIGHT JOIN users_sub u ON a.user_id = u._id GROUP BY date::date")
+    paste(users_sub(input$activityLang, input$userRole, input$activityProf), "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner_m a RIGHT JOIN users_sub u ON a.user_id = u._id GROUP BY date::date")
   })
   output$activitySql = reactive({ activitySql() })
   
@@ -190,7 +191,7 @@ server <- function(input, output) {
   })
 
   # new posts
-  postsql = reactive({ paste(users_sub(),
+  postsql = reactive({ paste(users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost),
     "select p.CREATED_AT::date as n, count(p.*) FROM posts p INNER JOIN users_sub u on u._id = p.owner_id GROUP BY p.created_at::date", sep=' ')
   })
   
@@ -203,7 +204,7 @@ server <- function(input, output) {
     
   output$rollerPost = renderDygraph({
     pqxts = postdata()
-    dygraph(pqxts) %>% dyRangeSelector %>% dyRoller(rollPeriod = as.numeric(input$rollPost))
+    dygraph(pqxts) %>% dyRangeSelector %>% dyRoller(rollPeriod = as.numeric(input$rollPeriodpost))
   })
   
   # weekly unique users
