@@ -74,8 +74,41 @@ body <- dashboardBody(tabItems(
   tabItem(
     tabName = "posts",
     dygraphOutput("rollerPost"),
-    sliderInput("rollPost", "Smoothing:", 1, 100, 1)
-    
+    flowLayout(
+      sliderInput("rollPeriod", "Smoothing:", 1, 100, 1),
+      radioButtons(
+        "activityProf",
+        "Professions",
+        c(
+          "All" = "all",
+          "Clothing designers" = "clothesDesigner",
+          "Florists" = "florist",
+          "Carpenters" = "carpenter",
+          "Multimedia electronicians" = "multimediaElectronician"
+        )
+      ),
+      radioButtons(
+        "activityLang",
+        "Languages",
+        c(
+          "All" = "all",
+          "German" = "de",
+          "French" = "fr",
+          "Italian" = "it"
+        )
+      ),
+      radioButtons(
+        "userRole",
+        "User role",
+        c(
+          "All"="all",
+          "Apprentice"="apprentice",
+          "Teacher"="teacher",
+          "Supervisor"="supervisor"
+        )
+      )
+    ),
+    htmlOutput("postsql")
   ),
   tabItem(
     tabName = "uniqueUsers",
@@ -116,11 +149,11 @@ con <-
 
 server <- function(input, output) {
   # all activity
-  activitySql = reactive({
-    professionq = function(x) { paste0("p.name LIKE '",x ,"'") }
-    localeq = function(x) { paste0("u.locale LIKE '", x, "'") }
-    uroleq = function(x) { paste0("u.role_id LIKE '", x, "'") }
-    
+  professionq = function(x) { paste0("p.name LIKE '",x ,"'") }
+  localeq = function(x) { paste0("u.locale LIKE '", x, "'") }
+  uroleq = function(x) { paste0("u.role_id LIKE '", x, "'") }
+  
+  users_sub = function(){    
     conditions = c(
       (if (input$activityLang != 'all') localeq(input$activityLang) else NULL),
       (if (input$userRole != 'all') uroleq(input$userRole) else NULL),
@@ -128,21 +161,18 @@ server <- function(input, output) {
     )
     conditions = paste(conditions, collapse=' AND ')
     conditions = if(nchar(conditions) > 0) paste0("WHERE ", conditions) else ''
-    users_sub = paste('WITH users_sub as (select u.*, p.name from users u LEFT JOIN professions p ON u.profession_id = p._id ', conditions,  ")", sep=" ")
-    
-    paste(users_sub,
-      "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner a right JOIN users_sub u ON a.user_id = u._id GROUP BY date::date"
-    )
+    paste('WITH users_sub as (select u.*, p.name from users u LEFT JOIN professions p ON u.profession_id = p._id ', conditions,  ")", sep=" ")
+  }
+  activitySql = reactive({
+    paste(users_sub(), "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner_m a RIGHT JOIN users_sub u ON a.user_id = u._id GROUP BY date::date")
   })
-  
   output$activitySql = reactive({ activitySql() })
-
+  
   activityData = reactive({
     pall = dbGetQuery(con, activitySql())
     if (nrow(pall) == 0) {
       c("empty", "empty")
     } else {
-
       xts(na.omit(pall)[, -1], order.by = as.Date(na.omit(pall)[, 1]))
     }
   })
@@ -154,15 +184,25 @@ server <- function(input, output) {
     } else {
       dygraph(a, main = "All", group = "1") %>%
         dyRoller(rollPeriod = as.numeric(input$rollPeriod)) %>%
-        dyOptions(fillGraph = TRUE, fillAlpha = 0.2)
+        dyOptions(fillGraph = TRUE, fillAlpha = 0.2) %>%
+        dyRangeSelector
     }
   })
 
   # new posts
-  postcgroup = dbGetQuery(con,
-                          "select CREATED_AT::date as n, count(*) FROM posts GROUP BY created_at::date")
-  pqxts <- xts(postcgroup[, -1], order.by = as.Date(postcgroup[, 1]))
-  output$rollerPost <- renderDygraph({
+  postsql = reactive({ paste(users_sub(),
+    "select p.CREATED_AT::date as n, count(p.*) FROM posts p INNER JOIN users_sub u on u._id = p.owner_id GROUP BY p.created_at::date", sep=' ')
+  })
+  
+  output$postsql = reactive({ postsql() })
+  
+  postdata = reactive({
+    postcgroup = dbGetQuery(con, postsql())
+    xts(postcgroup[, -1], order.by = as.Date(postcgroup[, 1]))
+})
+    
+  output$rollerPost = renderDygraph({
+    pqxts = postdata()
     dygraph(pqxts) %>% dyRangeSelector %>% dyRoller(rollPeriod = as.numeric(input$rollPost))
   })
   
