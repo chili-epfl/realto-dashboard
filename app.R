@@ -126,7 +126,7 @@ body <- dashboardBody(tabItems(
   tabItem(
     tabName = "uniqueUsers",
     dygraphOutput("uniqueUsersPlot"),
-    fillRow(
+    flowLayout(
       sliderInput("uniqueUsersSmoothing", "Smoothing:", 1, 100, 1),
       radioButtons(
         "uniqueUsersGran",
@@ -136,9 +136,42 @@ body <- dashboardBody(tabItems(
           "Week" = "week",
           "Month" = "month"
         )
+      ),
+      radioButtons(
+        "activityProfUnique",
+        "Professions",
+        c(
+          "All" = "all",
+          "Clothing designers" = "clothesDesigner",
+          "Florists" = "florist",
+          "Carpenters" = "carpenter",
+          "Multimedia electronicians" = "multimediaElectronician"
+        )
+      ),
+      radioButtons(
+        "activityLangUnique",
+        "Languages",
+        c(
+          "All" = "all",
+          "German" = "de",
+          "French" = "fr",
+          "Italian" = "it"
+        )
+      ),
+      radioButtons(
+        "userRoleUnique",
+        "User role",
+        c(
+          "All"="all",
+          "Apprentice"="apprentice",
+          "Teacher"="teacher",
+          "Supervisor"="supervisor"
+        )
       )
-    )
+    ),
+    htmlOutput("uniqueSql")
   ),
+
   tabItem(tabName = "mostActive",
           DT::dataTableOutput("mostActiveTable")),
   
@@ -224,17 +257,26 @@ server <- function(input, output) {
   })
   
   # weekly unique users
-  output$uniqueUsersPlot <- renderDygraph({
-    monthquery = paste0(
-      "WITH a AS (SELECT user_id, date_trunc('",
+  uniqueUsersSql = reactive({
+    paste0(
+      users_sub(input$activityLangUnique, input$userRoleUnique, input$activityProfUnique),
+      ", b AS (SELECT a.user_id, date_trunc('",
       input$uniqueUsersGran,
-      "', DATE) AS DATE FROM user_activity_logs)
-      SELECT DATE, count(distinct(user_id)) FROM a GROUP BY DATE ORDER BY DATE desc"
+      "', a.DATE) AS DATE FROM user_activity_logs_cleaner_m a INNER JOIN users_sub u on u._id = a.user_id )
+      SELECT DATE, count(distinct(user_id)) FROM b GROUP BY DATE ORDER BY DATE desc", sep=' '
     )
-    month = dbGetQuery(con, monthquery)
-    mxts <- xts(month[, -1], order.by = as.Date(month[, 1]))
+  })
+  
+  output$uniqueSql = reactive({ uniqueUsersSql()})
+  
+  uniqueUsersData = reactive({
+    month = dbGetQuery(con, uniqueUsersSql())
+    xts(month[, -1], order.by = as.Date(month[, 1]))
+  })
+  
+  output$uniqueUsersPlot <- renderDygraph({
+    mxts = uniqueUsersData()
     dygraph(mxts) %>% dyRangeSelector %>% dyRoller(rollPeriod = as.numeric(input$uniqueUsersSmoothing))
-    
   })
   
   # most active users
