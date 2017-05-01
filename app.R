@@ -1,4 +1,5 @@
 ## app.R ##
+# devtools::install_github(c("ramnathv/htmlwidgets", "rstudio/dygraphs"))
 library(shiny)
 library(shinydashboard)
 library(magrittr)
@@ -33,10 +34,7 @@ body <- dashboardBody(tabItems(
   # First tab content
   tabItem(
     tabName = "activity",
-    verticalLayout(
       dygraphOutput("rollerActivities"),
-      dygraphOutput("rollerActivities1")
-    ),
     flowLayout(
       sliderInput("rollPeriod", "Smoothing:", 1, 100, 1),
       radioButtons(
@@ -61,9 +59,10 @@ body <- dashboardBody(tabItems(
         )
       ),
       radioButtons(
-        "role",
+        "userRole",
         "User role",
         c(
+          "All"="all",
           "Apprentice"="apprentice",
           "Teacher"="teacher",
           "Supervisor"="supervisor"
@@ -118,88 +117,47 @@ con <-
 server <- function(input, output) {
   # all activity
   activitySql = reactive({
-    professionq = function(x) {
-      paste0("LEFT JOIN professions p ON u.profession_id = p._id WHERE p.name LIKE '",
-             x ,
-             "'")
-    }
-    localeq = function(x) {
-      paste0("u.locale LIKE '", x, "'")
-    }
+    professionq = function(x) { paste0("p.name LIKE '",x ,"'") }
+    localeq = function(x) { paste0("u.locale LIKE '", x, "'") }
+    uroleq = function(x) { paste0("u.role_id LIKE '", x, "'") }
     
-    if (input$activityLang != 'all') {
-      langq = localeq(input$activityLang)
-    } else {
-      langq = ""
-    }
-    
-    if (input$activityProf != 'all') {
-      profq = professionq(input$activityProf)
-      if (langq != "") {
-        langq = paste0(" AND ", langq)
-      }
-    } else {
-      profq = ""
-      if (langq != "") {
-        langq = paste0(" WHERE ", langq)
-      }
-    }
-    
-    query = paste0(
-      "SELECT a.date::DATE, u.role_id, count(a.*) AS n FROM user_activity_logs_cleaner a LEFT JOIN users u ON a.user_id = u._id ",
-      profq,
-      langq,
-      " GROUP BY date::date, u.role_id"
+    conditions = c(
+      (if (input$activityLang != 'all') localeq(input$activityLang) else NULL),
+      (if (input$userRole != 'all') uroleq(input$userRole) else NULL),
+      (if (input$activityProf != 'all') professionq(input$activityProf) else NULL)
     )
-    queryall = paste0(
-      "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner a LEFT JOIN users u ON a.user_id = u._id ",
-      profq,
-      langq,
-      " GROUP BY date::date"
+    conditions = paste(conditions, collapse=' AND ')
+    conditions = if(nchar(conditions) > 0) paste0("WHERE ", conditions) else ''
+    users_sub = paste('WITH users_sub as (select u.*, p.name from users u LEFT JOIN professions p ON u.profession_id = p._id ', conditions,  ")", sep=" ")
+    
+    paste(users_sub,
+      "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner a right JOIN users_sub u ON a.user_id = u._id GROUP BY date::date"
     )
-    c(query, queryall)
   })
-  output$activitySql = reactive({
-    a = activitySql()
-    paste0(a[1], "<br>", a[2])
-  })
+  
+  output$activitySql = reactive({ activitySql() })
+
   activityData = reactive({
-    pcount = dbGetQuery(con, activitySql()[[1]])
-    pall = dbGetQuery(con, activitySql()[[2]])
+    pall = dbGetQuery(con, activitySql())
     if (nrow(pall) == 0) {
       c("empty", "empty")
     } else {
-      pwide = dcast(pcount, date ~ role_id)
-      pwide$admin = NULL
-      pwide$researcher = NULL
-      
-      qxts <- xts(pwide[, -1], order.by = as.Date(pwide[, 1]))
-      qxts1 <- xts(pall[, -1], order.by = as.Date(pall[, 1]))
-      list(qxts, qxts1)
+
+      xts(na.omit(pall)[, -1], order.by = as.Date(na.omit(pall)[, 1]))
     }
   })
+  
   output$rollerActivities <- renderDygraph({
-    a = activityData()[[1]]
+    a = activityData()
     if (class(a) == "character" && a == "empty") {
       NA
     } else {
-      dygraph(a, main = "Groups", group = "1") %>%
+      dygraph(a, main = "All", group = "1") %>%
         dyRoller(rollPeriod = as.numeric(input$rollPeriod)) %>%
         dyOptions(fillGraph = TRUE, fillAlpha = 0.2)
     }
   })
-  output$rollerActivities1 <- renderDygraph({
-    b = activityData()[[2]]
-    if (class(b) == "character" && b == "empty") {
-      dygraph(x)
-    } else {
-      dygraph(b, main = "All", group = "1") %>%
-        dyRangeSelector %>%
-        dyRoller(rollPeriod = as.numeric(input$rollPeriod)) %>%
-        dyOptions(fillGraph = TRUE, fillAlpha = 0.4)
-    }
-  })
-  
+
   # new posts
   postcgroup = dbGetQuery(con,
                           "select CREATED_AT::date as n, count(*) FROM posts GROUP BY created_at::date")
