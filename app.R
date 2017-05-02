@@ -13,6 +13,7 @@ library(scales)
 library(reshape2)
 library(googleVis)
 source("./eventcount.R")
+source("./password.R")
 
 header <- dashboardHeader(title = "REALTO dashboard")
 
@@ -203,7 +204,7 @@ con <-
     host = "icchilisrv1.epfl.ch",
     user = "shiny",
     dbname = "realto",
-    password = "d0f98sd0f9832oj42kFDFDF"
+    password = password
   )
 
 server <- function(input, output) {
