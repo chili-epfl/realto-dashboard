@@ -18,21 +18,12 @@ source("./password.R")
 header <- dashboardHeader(title = "REALTO dashboard")
 
 sidebar <- dashboardSidebar(sidebarMenu(
-  menuItem("Most active flows", tabName = "flows", icon = icon("th")),
-  menuItem(
-    "All activity",
-    tabName = "activity",
-    icon = icon("dashboard")
-  ),
+  menuItem("Most active flows", tabName = "flows", icon = icon("dashboard")),
+  menuItem("All activity",tabName = "activity", icon = icon("th")),
   menuItem("Posts and Users/posts", tabName = "posts", icon = icon("th")),
-  menuItem(
-    "Users",
-    tabName = "uniqueUsers",
-    icon = icon("th")
-  ),
+  menuItem("Users", tabName = "uniqueUsers",    icon = icon("th") ),
   menuItem("Most active users", tabName = "mostActive", icon = icon("th")),
-  menuItem("REALTO", icon = icon("file-code-o"),
-           href = "https://www.realto.ch")
+  menuItem("REALTO", icon = icon("file-code-o"), href = "https://www.realto.ch")
 ))
 
 body <- dashboardBody(tabItems(
@@ -118,11 +109,11 @@ body <- dashboardBody(tabItems(
         "Post type",
         c(
           "All"="all",
+          "post"="standard",
+          "learnDoc"="learnDoc",
           "activity"="activity",
           "activitySubmission"="activitySubmission",
-          "learnDoc"="learnDoc",
-          "learningJournal"="learningJournal",
-          "standard"="standard",
+          #"learningJournal"="learningJournal",
           "standardLd"="standardLd"
         )
       )
@@ -287,7 +278,8 @@ server <- function(input, output) {
   
   output$postUsers = renderPlot({
     p = postsUsersData()
-    ggplot(p, aes(n)) + geom_histogram(binwidth=5) + scale_x_continuous('Number of students', breaks=seq(0,1000,5))
+    ggplot(p, aes(n)) + geom_histogram(binwidth=5,fill="blue",) + 
+      scale_x_continuous('Number of posts', breaks=seq(0,1000,5))+labs(x="Age", y='Number of users')
   })
   
   # weekly unique users
@@ -323,7 +315,7 @@ server <- function(input, output) {
   })
 
   output$cumulUsersPlot = renderPlot({
-    ggplot(cumulUsersData(), aes(date)) + stat_bin(aes(y = cumsum(..count..)), geom="step") + scale_x_date(date_breaks = "1 month", date_minor_breaks = "1 week", labels=date_format("%m/%y"))  
+    ggplot(cumulUsersData(), aes(date)) + stat_bin(aes(y = cumsum(..count..)), geom="step", col='blue') + scale_x_date(date_breaks = "1 month", date_minor_breaks = "1 week", labels=date_format("%m/%y"))  
   })
     
   output$uniqueUsersPlot <- renderDygraph({
