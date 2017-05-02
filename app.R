@@ -41,7 +41,13 @@ body <- dashboardBody(tabItems(
           "Clothing designers" = "clothesDesigner",
           "Florists" = "florist",
           "Carpenters" = "carpenter",
-          "Multimedia electronicians" = "multimediaElectronician"
+          "Multimedia electronicians" = "multimediaElectronician",
+          "Painter" = 'painter',
+          "Sanitaire"="sanitaire",
+          "ElectricalFitter"="electricalFitter",
+          "Automatiker"="automatiker",
+          "Mecanic Production"="mecanicProduction",
+          "PolyMecanic"="polyMecanic"
         )
       ),
       radioButtons(
@@ -81,8 +87,14 @@ body <- dashboardBody(tabItems(
           "Clothing designers" = "clothesDesigner",
           "Florists" = "florist",
           "Carpenters" = "carpenter",
-          "Multimedia electronicians" = "multimediaElectronician"
-        )
+          "Multimedia electronicians" = "multimediaElectronician",
+          "Painter" = 'painter',
+          "Sanitaire"="sanitaire",
+          "ElectricalFitter"="electricalFitter",
+          "Automatiker"="automatiker",
+          "Mecanic Production"="mecanicProduction",
+          "PolyMecanic"="polyMecanic"
+          )
       ),
       radioButtons(
         "activityLangpost",
