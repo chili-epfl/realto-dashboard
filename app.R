@@ -12,8 +12,13 @@ library(dplyr)
 library(scales)
 library(reshape2)
 library(googleVis)
+# library(TraMineR)
 source("./eventcount.R")
 source("./password.R")
+# source("./preparePlots.R")
+
+
+
 
 header <- dashboardHeader(title = "REALTO dashboard")
 
@@ -75,8 +80,14 @@ body <- dashboardBody(tabItems(
   ),
   tabItem(
     tabName = "posts",
+    h3('Number of posts over time'),
     dygraphOutput("rollerPost"),
+    h3('Users and posts distribution'),
     plotOutput("postUsers"),
+    h3('Sequence of post Types by each individual user'),
+    h5('Each rows represents one user, columns represent weeks/month, colors encode type of activity'),
+    plotOutput("usersPostSequencePlot"),
+    
     flowLayout(
       sliderInput("rollPeriodpost", "Smoothing:", 1, 100, 1),
       radioButtons(
@@ -121,18 +132,27 @@ body <- dashboardBody(tabItems(
         "Post type",
         c(
           "All"="all",
-          "post"="standard",
+          "standard post"="standard",
           "learnDoc"="learnDoc",
           "activity"="activity",
-          "activitySubmission"="activitySubmission",
+          "activity Submission"="activitySubmission",
           #"learningJournal"="learningJournal",
           "standardLd"="standardLd"
+        )
+      ),
+      radioButtons(
+        "posSeq_time_window",
+        "Time window:",
+        c(
+          "Week" = "week",
+          "Month" = "month"
         )
       )
     ),
     htmlOutput("postsql"),
-    textOutput("postsUsersSql")
-
+    textOutput("postsUsersSql"),
+    textOutput("usersPostSequenceSql")
+    
   ),
   tabItem(
     tabName = "uniqueUsers",
@@ -270,14 +290,31 @@ server <- function(input, output) {
             " p.deleted = FALSE AND (LD.deleted IS NULL or LD.deleted = FALSE) AND p.created_at::DATE > '",a[[1]],"' AND p.created_at::DATE < '", a[[2]],"' GROUP BY u._id")
     return(ret)
     })
-  output$postsUsersSql = reactive({postsUsersSql()})
+  # posts users profile --> what each user does in each week
+  usersPostSequenceSql = reactive({ 
+    typeq = if(input$postType != 'all') paste0(" WHERE p.post_type LIKE '", input$postType, "' AND ") else " WHERE "
+    a = input$rollerPost_date_window  
+    ret = paste0("WITH u_week_post as ( WITH u_week_post_count as (", users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost),
+                 " select date_trunc('",input$posSeq_time_window,"',p.CREATED_AT::date) as time, p.owner_id, p.post_type, count(p.*)
+                  FROM posts p INNER JOIN users_sub u on u._id = p.owner_id LEFT JOIN learning_doc_entries LD on LD._id = p.ld_id ", typeq, 
+                 " p.post_type NOT LIKE 'learningJournal' AND p.deleted = FALSE AND (LD.deleted IS NULL or LD.deleted = FALSE) AND p.created_at::DATE > '",a[[1]],"' AND p.created_at::DATE < '", a[[2]],
+                 "' GROUP BY p.owner_id, p.post_type,time ORDER BY owner_id, time desc,post_type",") 
+                  SELECT  owner_id,time, string_agg((post_type), ', ') AS post_type
+                  FROM   u_week_post_count  GROUP  BY owner_id,time) select u.first_name, u.last_name,upw.* from u_week_post upw LEFT JOIN users u ON upw.owner_id=u._id")
+    return(ret)
+  })
   
+  output$postsUsersSql = reactive({postsUsersSql()})
+  output$usersPostSequenceSql = reactive({usersPostSequenceSql()})
   output$postsql = reactive({ postsql() })
   
   postsUsersData = reactive({
     dbGetQuery(con, postsUsersSql())
   })
   
+  usersPostSequenceData= reactive({
+    dbGetQuery(con, usersPostSequenceSql())
+  })
   postdata = reactive({
     postcgroup = dbGetQuery(con, postsql())
     xts(postcgroup[, -1], order.by = as.Date(postcgroup[, 1]))
@@ -292,6 +329,24 @@ server <- function(input, output) {
     p = postsUsersData()
     ggplot(p, aes(n)) + geom_histogram(binwidth=5,fill="blue",) + 
       scale_x_continuous('Number of posts', breaks=seq(0,1000,5))+labs(x="Age", y='Number of users')
+  })
+  
+  output$usersPostSequencePlot = renderPlot({
+    p = usersPostSequenceData()
+    postsTypefilter =input$postType
+    p$User_name= paste(p$first_name, p$last_name)
+    postsTypefilter = 'all' # input$postType
+    if (postsTypefilter=='all'){  # to reduce cimbinations, replace standardLd with learnDoc and activitySubmission by activity
+      p$post_type=gsub('activitySubmission', 'activity', p$post_type)
+      p$post_type=gsub('standardLd', 'learnDoc', p$post_type)
+      p$post_type=gsub('standard', 'standard post', p$post_type)
+      #--- remove duplicates after the replacement
+      p$post_type= vapply(lapply(strsplit(p$post_type, ", "), unique), paste, character(1L), collapse = ", ")
+    }  
+    
+    ggplot(data=p, aes(time,User_name  ))+
+      geom_tile(aes(fill = post_type))
+    
   })
   
   # weekly unique users
