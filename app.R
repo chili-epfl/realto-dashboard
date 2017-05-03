@@ -12,10 +12,8 @@ library(dplyr)
 library(scales)
 library(reshape2)
 library(googleVis)
-# library(TraMineR)
 source("./eventcount.R")
 source("./password.R")
-# source("./preparePlots.R")
 
 
 
@@ -206,7 +204,7 @@ body <- dashboardBody(tabItems(
       )
     ),
     htmlOutput("uniqueSql"),
-    htmlOutput("cumulUsers")
+    htmlOutput("cumulUsersSql")
   ),
 
   tabItem(tabName = "mostActive",
@@ -335,7 +333,6 @@ server <- function(input, output) {
     p = usersPostSequenceData()
     postsTypefilter =input$postType
     p$User_name= paste(p$first_name, p$last_name)
-    postsTypefilter = 'all' # input$postType
     if (postsTypefilter=='all'){  # to reduce cimbinations, replace standardLd with learnDoc and activitySubmission by activity
       p$post_type=gsub('activitySubmission', 'activity', p$post_type)
       p$post_type=gsub('standardLd', 'learnDoc', p$post_type)
@@ -360,7 +357,7 @@ server <- function(input, output) {
     )
   })
   
-  cumulUsers = reactive({
+  cumulUsersSql = reactive({
     a = input$uniqueUsersPlot_date_window  
     paste0(
       users_sub(input$activityLangUnique, input$userRoleUnique, input$activityProfUnique),
@@ -369,7 +366,7 @@ server <- function(input, output) {
     )
   })
 
-  output$cumulUsers = reactive({ cumulUsers()})
+  output$cumulUsersSql = reactive({ cumulUsersSql()})
   
   output$uniqueSql = reactive({ uniqueUsersSql()})
   
@@ -378,7 +375,7 @@ server <- function(input, output) {
     xts(month[, -1], order.by = as.Date(month[, 1]))
   })
   cumulUsersData = reactive({
-    dbGetQuery(con, cumulUsers())
+    dbGetQuery(con, cumulUsersSql())
   })
 
   output$cumulUsersPlot = renderPlot({
