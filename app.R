@@ -12,9 +12,11 @@ library(dplyr)
 library(scales)
 library(reshape2)
 library(googleVis)
+library(reshape)
+library(cluster)
 source("./eventcount.R")
 source("./password.R")
-
+source("./preparePlots.R")
 
 
 
@@ -46,11 +48,11 @@ body <- dashboardBody(tabItems(
           "Carpenters" = "carpenter",
           "Multimedia electronicians" = "multimediaElectronician",
           "Painter" = 'painter',
-          "Sanitaire"="sanitaire",
-          "ElectricalFitter"="electricalFitter",
-          "Automatiker"="automatiker",
-          "Mecanic Production"="mecanicProduction",
-          "PolyMecanic"="polyMecanic"
+          "Automatiker"="automatiker"
+          # "Sanitaire"="sanitaire",
+          # "ElectricalFitter"="electricalFitter",
+          # "Mecanic Production"="mecanicProduction",
+          # "PolyMecanic"="polyMecanic"
         )
       ),
       radioButtons(
@@ -98,11 +100,11 @@ body <- dashboardBody(tabItems(
           "Carpenters" = "carpenter",
           "Multimedia electronicians" = "multimediaElectronician",
           "Painter" = 'painter',
-          "Sanitaire"="sanitaire",
-          "ElectricalFitter"="electricalFitter",
-          "Automatiker"="automatiker",
-          "Mecanic Production"="mecanicProduction",
-          "PolyMecanic"="polyMecanic"
+          "Automatiker"="automatiker"
+          # "Sanitaire"="sanitaire",
+          # "ElectricalFitter"="electricalFitter",
+          # "Mecanic Production"="mecanicProduction",
+          # "PolyMecanic"="polyMecanic"
           )
       ),
       radioButtons(
@@ -179,7 +181,13 @@ body <- dashboardBody(tabItems(
           "Clothing designers" = "clothesDesigner",
           "Florists" = "florist",
           "Carpenters" = "carpenter",
-          "Multimedia electronicians" = "multimediaElectronician"
+          "Multimedia electronicians" = "multimediaElectronician",
+          "Painter" = 'painter',
+          "Automatiker"="automatiker"
+          # "Sanitaire"="sanitaire",
+          # "ElectricalFitter"="electricalFitter",
+          # "Mecanic Production"="mecanicProduction",
+          # "PolyMecanic"="polyMecanic"
         )
       ),
       radioButtons(
@@ -206,8 +214,10 @@ body <- dashboardBody(tabItems(
     htmlOutput("uniqueSql"),
     htmlOutput("cumulUsersSql")
   ),
-  #----------------------- tab:  most Active users ----------------------------
+#----------------------- tab:  most Active users ----------------------------
   tabItem(tabName = "mostActive",
+          plotOutput("usageClustersPlot"),
+          plotOutput("usageBarPlot"),
           DT::dataTableOutput("mostActiveTable"),
           htmlOutput("mostActiveUsersSql")
   ),
@@ -216,10 +226,8 @@ body <- dashboardBody(tabItems(
           DT::dataTableOutput("flowsTable"),
           htmlOutput("flowSql")
   )
-  
 ))
  
-
 
 ui <- dashboardPage(header, sidebar, body)
 
@@ -330,22 +338,8 @@ server <- function(input, output) {
   usersPostSequenceData= reactive({ dbGetQuery(con, usersPostSequenceSql())  })
   
   output$usersPostSequencePlot = renderPlot({
-    dateLimits= input$rollerPost_date_window  
-    startT= as.Date(dateLimits[[1]], format = "%Y-%m-%dT%H:%M:%S.")
-    endT= as.Date(dateLimits[[2]], format = "%Y-%m-%dT%H:%M:%S.")
     p = usersPostSequenceData()
-    postsTypefilter =input$postType
-    p$User_name= paste(p$first_name, p$last_name)
-    p$time=  as.Date(p$time, format = "%Y-%m-%d %H:%M:%S")                                         
-    if (postsTypefilter=='all'){  # to reduce cimbinations, replace standardLd with learnDoc and activitySubmission by activity
-      p$post_type=gsub('activitySubmission', 'activity', p$post_type)
-      p$post_type=gsub('standardLd', 'learnDoc', p$post_type)
-      p$post_type=gsub('standard', 'standard post', p$post_type)
-      #--- remove duplicates after the replacement
-      p$post_type= vapply(lapply(strsplit(p$post_type, ", "), unique), paste, character(1L), collapse = ", ")
-    }  
-    ggplot(data=p, aes(time,User_name  ))+ geom_tile(aes(fill = post_type))+
-      scale_x_date(breaks = waiver(),labels = date_format("%d %b %y"),limits = c(startT,endT) )+labs( main='')
+    getPostSequencePlot(p, input)
   })
   
 #---------- weekly unique users -----------
@@ -382,8 +376,8 @@ server <- function(input, output) {
   
   output$cumulUsersPlot = renderPlot({
     p=cumulUsersData()
-    ggplot(p, aes(date)) + stat_bin(aes(y = cumsum(..count..)), geom="step", col='blue') + 
-      scale_x_date(date_breaks = "1 month", date_minor_breaks = "1 week", labels=date_format("%b%Y"))  
+    ggplot(p, aes(date)) + stat_bin(aes(y = cumsum(..count..)), geom="step", col='blue') + labs(y='Registered User Count')+
+      scale_x_date(date_breaks = "2 month", date_minor_breaks = "1 week", labels=date_format("%b%Y"))#+theme(axis.text.x = element_text(angle = 90, hjust = 1))  
   })
   
 #-------------------- most active users ---------------
@@ -391,26 +385,7 @@ server <- function(input, output) {
 #                         ldcnt AS (SELECT count(*) AS n, apprentice_id AS uid FROM learning_doc_entries WHERE deleted = FALSE GROUP BY uid)
 #                         SELECT u._id as personalflow, u.first_name, u.last_name, coalesce(max(p.n),0) as postsn, coalesce(max(l.n),0) as ldocsn FROM users u FULL JOIN postcnt p ON u._id = p.uid FULL JOIN ldcnt l ON u._id = l.uid GROUP BY u._id;"
 #   })
-#   output$mostActiveUsersSql = reactive({ mostActiveUsersSql()})
-#   mostactiveUData = reactive({    dbGetQuery(con, mostActiveUsersSql())  })
-#   
-#   
-#   output$mostActiveTable <- DT::renderDataTable({
-#     p = mostactiveUData()
-#     p$posts = paste0(
-#       "<a href=https://www.realto.ch/userFlow/", p$personalflow,">",
-#       as.numeric(p$postsn),"</a>"
-#     )
-#     p$learndocs = paste0(
-#       "<a href=https://www.realto.ch/learnDoc?apprentice=",
-#       p$personalflow,  ">", as.numeric(p$ldocsn),  "</a>"
-#     )
-#     p$personalflow = NULL
-#     p$postsn = NULL
-#     p$ldocsn = NULL
-#     p
-#   }, escape = F, server = F)
-  
+
   
   mostActiveUsersSql =reactive({  "WITH AllPostCnt AS (SELECT count(*) AS n, owner_id AS uid FROM posts where deleted = FALSE GROUP BY uid),
   StandardPostCnt AS (SELECT count(*) AS n, owner_id AS uid FROM posts where post_type LIKE 'standard' AND deleted = FALSE GROUP BY uid),
@@ -421,8 +396,8 @@ server <- function(input, output) {
   commentsCnt AS (SELECT count(*) AS n, owner_id AS uid FROM post_comments where deleted = FALSE GROUP BY uid)
   SELECT u._id as personalflow, u.first_name, u.last_name,
   coalesce(max(l.n),0) as learning_document ,
-  coalesce(max(a.n),0) as all_post_n,
-  coalesce(max(s.n),0) as satndard_posts  ,coalesce(max(ldp.n),0) as ld_post_n ,
+  coalesce(max(a.n),0) as all_post_types,
+  coalesce(max(s.n),0) as satndard_posts  ,coalesce(max(ldp.n),0) as ld_posts ,
   coalesce(max(asp.n),0) as activity_submission ,coalesce(max(act.n),0) as activity  ,coalesce(max(cmn.n),0) as comments_n
   FROM users u 
   FULL JOIN AllPostCnt a ON u._id = a.uid 
@@ -436,7 +411,7 @@ server <- function(input, output) {
   })
      
   # columns are:
-  # standard_post_n, learning_document ,activity ,activity_submission, comments_n, all_post_n, ld_post_n , activity ,activity_submission, comments_n
+  # standard_post_n, learning_document ,activity ,activity_submission, comments_n, all_post_types, ld_posts , 
 
   output$mostActiveUsersSql = reactive({ mostActiveUsersSql()})
   mostactiveUData = reactive({    dbGetQuery(con, mostActiveUsersSql())  })
@@ -445,18 +420,22 @@ server <- function(input, output) {
     p = mostactiveUData()
     p$satndard_posts = paste0("<a href=https://www.realto.ch/userFlow/", p$personalflow,">",      as.numeric(p$satndard_posts),"</a>"  )
     p$learning_document = paste0("<a href=https://www.realto.ch/learnDoc?apprentice=",p$personalflow,  ">", as.numeric(p$learning_document),  "</a>"    )
-    # p$learning_document = NULL
-#     p$activity = p$activity; 
-#     p$activity=NULL
-#     p$activity_submission=p$activity_submission
-#     p$activity_submission=NULL
     p$comment=p$comments_n; p$comments_n=NULL
     p$personalflow = NULL
-    p$all_post_n = NULL
-    p$ld_post_n=NULL
+    p$all_post_types = NULL
+    p$ld_posts=NULL
     p
   }, escape = F, server = F)
 
+  output$usageClustersPlot = renderPlot({
+    p=mostactiveUData()
+    getUsageClusterPlot(p, input)
+  })
+  
+  output$usageBarPlot = renderPlot({
+    p=mostactiveUData()
+    getUsageBarPlot(p, input)
+  })
 #-------------------- most active flows ---------------
    # most active flows table
   flowSql = reactive({"WITH p_n AS (SELECT flow_id, count(*) AS n FROM posts GROUP BY flow_id),
