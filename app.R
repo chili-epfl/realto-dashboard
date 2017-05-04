@@ -27,10 +27,50 @@ sidebar <- dashboardSidebar(sidebarMenu(
   menuItem("All activity",tabName = "activity", icon = icon("th")),
   menuItem("Posts and Users/posts", tabName = "posts", icon = icon("th")),
   menuItem("Users", tabName = "uniqueUsers",    icon = icon("th") ),
-  menuItem("Most active users", tabName = "mostActive", icon = icon("th")),
+  menuItem("Most active users", tabName = "mostActiveUsers", icon = icon("th")),
+  menuItem("Users clusters", tabName = "Usersclusters", icon = icon("th")),
   menuItem("REALTO", icon = icon("file-code-o"), href = "https://www.realto.ch")
 ))
 
+
+#-----------filters
+professionsList=c(
+  "All" = "all",
+  "Clothing designers" = "clothesDesigner",
+  "Florists" = "florist",
+  "Carpenters" = "carpenter",
+  "Multimedia electronicians" = "multimediaElectronician",
+  "Painter" = 'painter',
+  "Automatiker"="automatiker"
+  # "Sanitaire"="sanitaire",
+  # "ElectricalFitter"="electricalFitter",
+  # "Mecanic Production"="mecanicProduction",
+  # "PolyMecanic"="polyMecanic"
+)
+
+languageList=c(
+  "All" = "all",
+  "German" = "de",
+  "French" = "fr",
+  "Italian" = "it"
+)
+roleList=c(
+  "All"="all",
+  "Apprentice"="apprentice",
+  "Teacher"="teacher",
+  "Supervisor"="supervisor"
+)
+postTypeList=
+  c(
+    "All"="all",
+    "standard post"="standard",
+    "learnDoc"="learnDoc",
+    "activity"="activity",
+    "activity Submission"="activitySubmission",
+    #"learningJournal"="learningJournal",
+    "standardLd"="standardLd"
+  )
+#------------------
 body <- dashboardBody(tabItems(
   # First tab content
   #----------------------- tab: activity ----------------------------
@@ -38,43 +78,9 @@ body <- dashboardBody(tabItems(
     dygraphOutput("rollerActivities"),
     flowLayout(
       sliderInput("rollPeriod", "Smoothing:", 1, 100, 1),
-      radioButtons(
-        "activityProf",
-        "Professions",
-        c(
-          "All" = "all",
-          "Clothing designers" = "clothesDesigner",
-          "Florists" = "florist",
-          "Carpenters" = "carpenter",
-          "Multimedia electronicians" = "multimediaElectronician",
-          "Painter" = 'painter',
-          "Automatiker"="automatiker"
-          # "Sanitaire"="sanitaire",
-          # "ElectricalFitter"="electricalFitter",
-          # "Mecanic Production"="mecanicProduction",
-          # "PolyMecanic"="polyMecanic"
-        )
-      ),
-      radioButtons(
-        "activityLang",
-        "Languages",
-        c(
-          "All" = "all",
-          "German" = "de",
-          "French" = "fr",
-          "Italian" = "it"
-        )
-      ),
-      radioButtons(
-        "userRole",
-        "User role",
-        c(
-          "All"="all",
-          "Apprentice"="apprentice",
-          "Teacher"="teacher",
-          "Supervisor"="supervisor"
-        )
-      )
+      radioButtons("activityProf",    "Professions",      professionsList  ),
+      radioButtons( "activityLang",   "Languages",languageList),
+      radioButtons( "userRole",  "User role",     roleList    )
     ),
     htmlOutput("activitySql")
   ),
@@ -90,65 +96,11 @@ body <- dashboardBody(tabItems(
     
     flowLayout(
       sliderInput("rollPeriodpost", "Smoothing:", 1, 100, 1),
-      radioButtons(
-        "activityProfpost",
-        "Professions",
-        c(
-          "All" = "all",
-          "Clothing designers" = "clothesDesigner",
-          "Florists" = "florist",
-          "Carpenters" = "carpenter",
-          "Multimedia electronicians" = "multimediaElectronician",
-          "Painter" = 'painter',
-          "Automatiker"="automatiker"
-          # "Sanitaire"="sanitaire",
-          # "ElectricalFitter"="electricalFitter",
-          # "Mecanic Production"="mecanicProduction",
-          # "PolyMecanic"="polyMecanic"
-          )
-      ),
-      radioButtons(
-        "activityLangpost",
-        "Languages",
-        c(
-          "All" = "all",
-          "German" = "de",
-          "French" = "fr",
-          "Italian" = "it"
-        )
-      ),
-      radioButtons(
-        "userRolepost",
-        "User role",
-        c(
-          "All"="all",
-          "Apprentice"="apprentice",
-          "Teacher"="teacher",
-          "Supervisor"="supervisor"
-        )
-      ),
-      radioButtons(
-        "postType",
-        "Post type",
-        c(
-          "All"="all",
-          "standard post"="standard",
-          "learnDoc"="learnDoc",
-          "activity"="activity",
-          "activity Submission"="activitySubmission",
-          #"learningJournal"="learningJournal",
-          "standardLd"="standardLd"
-        )
-      ),
-      radioButtons(
-        "posSeq_time_window",
-        "Time window:",
-        c(
-          "Week" = "week",
-          "Month" = "month"
-        )
-      )
-    ),
+      radioButtons("activityProfpost","Professions",professionsList  ),
+      radioButtons( "activityLangpost","Languages", languageList),
+      radioButtons("userRolepost","User role",roleList),
+      radioButtons( "postType", "Post type", postTypeList),
+      radioButtons(   "posSeq_time_window",     "Time window:", c( "Week" = "week",  "Month" = "month")  )    ),
     htmlOutput("postsql"),
     textOutput("postsUsersSql"),
     textOutput("usersPostSequenceSql")
@@ -164,63 +116,34 @@ body <- dashboardBody(tabItems(
     ),
     flowLayout(
       sliderInput("uniqueUsersSmoothing", "Smoothing:", 1, 100, 1),
-      radioButtons(
-        "uniqueUsersGran",
-        "Unique users per:",
-        c(
-          "Day" = "day",
-          "Week" = "week",
-          "Month" = "month"
-        )
-      ),
-      radioButtons(
-        "activityProfUnique",
-        "Professions",
-        c(
-          "All" = "all",
-          "Clothing designers" = "clothesDesigner",
-          "Florists" = "florist",
-          "Carpenters" = "carpenter",
-          "Multimedia electronicians" = "multimediaElectronician",
-          "Painter" = 'painter',
-          "Automatiker"="automatiker"
-          # "Sanitaire"="sanitaire",
-          # "ElectricalFitter"="electricalFitter",
-          # "Mecanic Production"="mecanicProduction",
-          # "PolyMecanic"="polyMecanic"
-        )
-      ),
-      radioButtons(
-        "activityLangUnique",
-        "Languages",
-        c(
-          "All" = "all",
-          "German" = "de",
-          "French" = "fr",
-          "Italian" = "it"
-        )
-      ),
-      radioButtons(
-        "userRoleUnique",
-        "User role",
-        c(
-          "All"="all",
-          "Apprentice"="apprentice",
-          "Teacher"="teacher",
-          "Supervisor"="supervisor"
-        )
-      )
+      radioButtons( "uniqueUsersGran", "Unique users per:",   c("Day" = "day",  "Week" = "week",    "Month" = "month" )  ),
+      radioButtons("activityProfUnique", "Professions",professionsList  ),
+      radioButtons("activityLangUnique","Languages", languageList ),
+      radioButtons( "userRoleUnique","User role",roleList)
     ),
     htmlOutput("uniqueSql"),
     htmlOutput("cumulUsersSql")
   ),
 #----------------------- tab:  most Active users ----------------------------
-  tabItem(tabName = "mostActive",
-          plotOutput("usageClustersPlot"),
-          plotOutput("usageBarPlot"),
+  tabItem(tabName = "mostActiveUsers",
           DT::dataTableOutput("mostActiveTable"),
           htmlOutput("mostActiveUsersSql")
   ),
+tabItem(tabName = "Usersclusters",
+        h3("Clusters of users based on their platform usage"),
+        h5("Use slider below the chart to change the number of clustes."),
+        plotOutput("usageClustersPlot"),
+        flowLayout(
+          sliderInput("users_clust_cnt:","Nubmer of clusters", 2, 8, 5),
+          radioButtons("userClustProf", "Professions",professionsList  ),
+          radioButtons("userClustProfLang","Languages", languageList ),
+          radioButtons( "userClustRole","User role",roleList)
+        ),
+        plotOutput("usageBarPlot")
+#         DT::dataTableOutput("mostActiveTable"),
+#         htmlOutput("mostActiveUsersSql")
+),
+
   #----------------------- tab:  most Active flows ----------------------------
   tabItem(tabName = "flows",
           DT::dataTableOutput("flowsTable"),

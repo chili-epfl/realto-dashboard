@@ -38,7 +38,7 @@ getUsageClusterPlot<-  function(p, input) {
   fs=c( "satndard_posts", "learning_document","activity_submission", "activity","comment" )
   #++++++++++++++++1 cluster users based on behaviours -----------
   pointsToCluster <- p [, fs]
-  Nclust=4
+  Nclust=input$users_clust_cnt
   n=nrow(pointsToCluster)
   #------- 'CLARA' ----------
   clMethod='CLARA'
