@@ -271,14 +271,24 @@ server <- function(input, output) {
     }
   })
 
-  # new posts
+# ---------------  new posts OVER TIME -----------------------
   postsql = reactive({ 
     typeq = if(input$postType != 'all') paste0(" WHERE p.deleted = FALSE AND (LD.deleted IS NULL OR LD.deleted = TRUE) AND p.post_type LIKE '", input$postType, "'") else ""
-    
     paste(users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost),
           "select p.CREATED_AT::date as n, count(p.*) FROM posts p INNER JOIN users_sub u on u._id = p.owner_id LEFT JOIN learning_doc_entries LD on LD._id = p.ld_id ", typeq, " GROUP BY p.created_at::date", sep=' ')
   })
+  output$postsql = reactive({ postsql() })
+  postdata = reactive({
+    postcgroup = dbGetQuery(con, postsql())
+    xts(postcgroup[, -1], order.by = as.Date(postcgroup[, 1]))
+  })
   
+  output$rollerPost = renderDygraph({
+    pqxts = postdata()
+    dygraph(pqxts) %>% dyRangeSelector %>% dyRoller(rollPeriod = as.numeric(input$rollPeriodpost))
+  })
+  
+# ---------------  users count V.S. pOSTS cOUNT -----------------------
   # posts users 
   postsUsersSql = reactive({ 
     typeq = if(input$postType != 'all') paste0(" WHERE p.post_type LIKE '", input$postType, "' AND ") else " WHERE "
@@ -288,12 +298,22 @@ server <- function(input, output) {
             " p.deleted = FALSE AND (LD.deleted IS NULL or LD.deleted = FALSE) AND p.created_at::DATE > '",a[[1]],"' AND p.created_at::DATE < '", a[[2]],"' GROUP BY u._id")
     return(ret)
     })
-  # posts users profile --> what each user does in each week
+  
+  output$postsUsersSql = reactive({postsUsersSql()})
+  postsUsersData = reactive({ dbGetQuery(con, postsUsersSql())  })
+  
+  output$postUsers = renderPlot({
+    p = postsUsersData()
+    ggplot(p, aes(n)) + geom_histogram(binwidth=5,fill="blue",) + 
+      scale_x_continuous('Number of posts', breaks=seq(0,1000,5))+labs(x="Age", y='Number of users')
+  })
+#------------------- users Post Sequence  ------------------  
+  #  what each user does in each week
   usersPostSequenceSql = reactive({ 
     typeq = if(input$postType != 'all') paste0(" WHERE p.post_type LIKE '", input$postType, "' AND ") else " WHERE "
     a = input$rollerPost_date_window  
     ret = paste0("WITH u_week_post as ( WITH u_week_post_count as (", users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost),
-                 " select date_trunc('",input$posSeq_time_window,"',p.CREATED_AT::date) as time, p.owner_id, p.post_type, count(p.*)
+                 " select date_trunc('",input$posSeq_time_window,"',p.CREATED_AT) as time, p.owner_id, p.post_type, count(p.*)
                   FROM posts p INNER JOIN users_sub u on u._id = p.owner_id LEFT JOIN learning_doc_entries LD on LD._id = p.ld_id ", typeq, 
                  " p.post_type NOT LIKE 'learningJournal' AND p.deleted = FALSE AND (LD.deleted IS NULL or LD.deleted = FALSE) AND p.created_at::DATE > '",a[[1]],"' AND p.created_at::DATE < '", a[[2]],
                  "' GROUP BY p.owner_id, p.post_type,time ORDER BY owner_id, time desc,post_type",") 
@@ -302,37 +322,15 @@ server <- function(input, output) {
     return(ret)
   })
   
-  output$postsUsersSql = reactive({postsUsersSql()})
   output$usersPostSequenceSql = reactive({usersPostSequenceSql()})
-  output$postsql = reactive({ postsql() })
-  
-  postsUsersData = reactive({
-    dbGetQuery(con, postsUsersSql())
-  })
-  
-  usersPostSequenceData= reactive({
-    dbGetQuery(con, usersPostSequenceSql())
-  })
-  postdata = reactive({
-    postcgroup = dbGetQuery(con, postsql())
-    xts(postcgroup[, -1], order.by = as.Date(postcgroup[, 1]))
-})
-    
-  output$rollerPost = renderDygraph({
-    pqxts = postdata()
-    dygraph(pqxts) %>% dyRangeSelector %>% dyRoller(rollPeriod = as.numeric(input$rollPeriodpost))
-  })
-  
-  output$postUsers = renderPlot({
-    p = postsUsersData()
-    ggplot(p, aes(n)) + geom_histogram(binwidth=5,fill="blue",) + 
-      scale_x_continuous('Number of posts', breaks=seq(0,1000,5))+labs(x="Age", y='Number of users')
-  })
+  usersPostSequenceData= reactive({ dbGetQuery(con, usersPostSequenceSql())  })
   
   output$usersPostSequencePlot = renderPlot({
     p = usersPostSequenceData()
     postsTypefilter =input$postType
     p$User_name= paste(p$first_name, p$last_name)
+    p$time=  as.Date(p$time, format = "%Y-%m-%d %H:%M:%S")                                           
+    
     if (postsTypefilter=='all'){  # to reduce cimbinations, replace standardLd with learnDoc and activitySubmission by activity
       p$post_type=gsub('activitySubmission', 'activity', p$post_type)
       p$post_type=gsub('standardLd', 'learnDoc', p$post_type)
@@ -340,13 +338,11 @@ server <- function(input, output) {
       #--- remove duplicates after the replacement
       p$post_type= vapply(lapply(strsplit(p$post_type, ", "), unique), paste, character(1L), collapse = ", ")
     }  
-    
-    ggplot(data=p, aes(time,User_name  ))+
-      geom_tile(aes(fill = post_type))
-    
+    ggplot(data=p, aes(time,User_name  ))+ geom_tile(aes(fill = post_type))+
+      scale_x_date(breaks = waiver(),labels = date_format("%d %b %y") )
   })
   
-  # weekly unique users
+#---------- weekly unique users -----------
   uniqueUsersSql = reactive({
     paste0(
       users_sub(input$activityLangUnique, input$userRoleUnique, input$activityProfUnique),
@@ -356,7 +352,17 @@ server <- function(input, output) {
       SELECT DATE, count(distinct(user_id)) FROM b GROUP BY DATE ORDER BY DATE desc", sep=' '
     )
   })
+  output$uniqueSql = reactive({ uniqueUsersSql()})
+  uniqueUsersData = reactive({
+    month = dbGetQuery(con, uniqueUsersSql())
+    xts(month[, -1], order.by = as.Date(month[, 1]))
+  })
   
+  output$uniqueUsersPlot <- renderDygraph({
+    mxts = uniqueUsersData()
+    dygraph(mxts) %>% dyRangeSelector %>% dyRoller(rollPeriod = as.numeric(input$uniqueUsersSmoothing))
+  })
+#------------- CUMULATIVE REGISTERED USERS COUNT ----------
   cumulUsersSql = reactive({
     a = input$uniqueUsersPlot_date_window  
     paste0(
@@ -365,28 +371,15 @@ server <- function(input, output) {
       "' ORDER BY DATE"
     )
   })
-
   output$cumulUsersSql = reactive({ cumulUsersSql()})
-  
-  output$uniqueSql = reactive({ uniqueUsersSql()})
-  
-  uniqueUsersData = reactive({
-    month = dbGetQuery(con, uniqueUsersSql())
-    xts(month[, -1], order.by = as.Date(month[, 1]))
-  })
   cumulUsersData = reactive({
     dbGetQuery(con, cumulUsersSql())
   })
-
   output$cumulUsersPlot = renderPlot({
     ggplot(cumulUsersData(), aes(date)) + stat_bin(aes(y = cumsum(..count..)), geom="step", col='blue') + scale_x_date(date_breaks = "1 month", date_minor_breaks = "1 week", labels=date_format("%m/%y"))  
   })
-    
-  output$uniqueUsersPlot <- renderDygraph({
-    mxts = uniqueUsersData()
-    dygraph(mxts) %>% dyRangeSelector %>% dyRoller(rollPeriod = as.numeric(input$uniqueUsersSmoothing))
-  })
   
+#-------------------- most active users ---------------
   # most active users
   output$mostActiveTable <- DT::renderDataTable({
     mostactiveq = "WITH postcnt AS (SELECT count(*) AS n, owner_id AS uid FROM posts GROUP BY uid),
@@ -394,18 +387,12 @@ server <- function(input, output) {
     SELECT u._id as personalflow, u.first_name, u.last_name, coalesce(max(p.n),0) as postsn, coalesce(max(l.n),0) as ldocsn FROM users u FULL JOIN postcnt p ON u._id = p.uid FULL JOIN ldcnt l ON u._id = l.uid GROUP BY u._id;"
     mostactive = dbGetQuery(con, mostactiveq)
     mostactive$posts = paste0(
-      "<a href=https://www.realto.ch/userFlow/",
-      mostactive$personalflow,
-      ">",
-      as.numeric(mostactive$postsn),
-      "</a>"
+      "<a href=https://www.realto.ch/userFlow/", mostactive$personalflow,">",
+      as.numeric(mostactive$postsn),"</a>"
     )
     mostactive$learndocs = paste0(
       "<a href=https://www.realto.ch/learnDoc?apprentice=",
-      mostactive$personalflow,
-      ">",
-      as.numeric(mostactive$ldocsn),
-      "</a>"
+      mostactive$personalflow,  ">", as.numeric(mostactive$ldocsn),  "</a>"
     )
     mostactive$personalflow = NULL
     mostactive$postsn = NULL
@@ -418,20 +405,17 @@ server <- function(input, output) {
   ff AS (SELECT f._id, coalesce(max(p_n.n),0) AS alltime, coalesce(max(p_wk.n),0) AS last7 FROM flows f FULL JOIN p_n ON f._id = p_n.flow_id FULL JOIN p_wk ON f._id = p_wk.flow_id WHERE f.type LIKE 'group' OR f.type LIKE 'school' AND f.deleted = FALSE GROUP BY f._id)
   SELECT flows._id AS id, flows.name, alltime, last7 FROM ff LEFT JOIN flows ON ff._id = flows._id;"
   output$flowq = reactive({flowq})
-  # most active flows
+
+#-------------------- most active flows ---------------
+   # most active flows table
   output$flowsTable <- DT::renderDataTable({
-    
-    
     flowd = dbGetQuery(con, flowq)
     flowd$name = paste0("<a href=https://www.realto.ch/userFlow/",
-                        flowd$id,
-                        ">",
-                        flowd$name,
-                        "</a>")
+                        flowd$id,">",flowd$name,"</a>")
     flowd$id = NULL
     flowd
   }, escape = F, server = F, caption = "Number of posts per flow, all time, or in the last 7 days")
 }
 
-# Run the application
+#======================== Run the application
 shinyApp(ui = ui, server = server)
