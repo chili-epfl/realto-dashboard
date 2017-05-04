@@ -31,9 +31,9 @@ sidebar <- dashboardSidebar(sidebarMenu(
 
 body <- dashboardBody(tabItems(
   # First tab content
-  tabItem(
-    tabName = "activity",
-      dygraphOutput("rollerActivities"),
+  #----------------------- tab: activity ----------------------------
+  tabItem( tabName = "activity",
+    dygraphOutput("rollerActivities"),
     flowLayout(
       sliderInput("rollPeriod", "Smoothing:", 1, 100, 1),
       radioButtons(
@@ -76,8 +76,8 @@ body <- dashboardBody(tabItems(
     ),
     htmlOutput("activitySql")
   ),
-  tabItem(
-    tabName = "posts",
+  #----------------------- tab: posts ----------------------------
+  tabItem(    tabName = "posts",
     h3('Number of posts over time'),
     dygraphOutput("rollerPost"),
     h3('Users and posts distribution'),
@@ -150,10 +150,10 @@ body <- dashboardBody(tabItems(
     htmlOutput("postsql"),
     textOutput("postsUsersSql"),
     textOutput("usersPostSequenceSql")
-    
   ),
-  tabItem(
-    tabName = "uniqueUsers",
+  
+  #----------------------- tab:  uniqueUsers ----------------------------
+  tabItem(  tabName = "uniqueUsers",
     fluidRow(
     h3('Unique users/timeframe'),
     dygraphOutput("uniqueUsersPlot"),
@@ -206,15 +206,20 @@ body <- dashboardBody(tabItems(
     htmlOutput("uniqueSql"),
     htmlOutput("cumulUsersSql")
   ),
-
+  #----------------------- tab:  most Active users ----------------------------
   tabItem(tabName = "mostActive",
-          DT::dataTableOutput("mostActiveTable")),
-  
+          DT::dataTableOutput("mostActiveTable"),
+          htmlOutput("mostActiveUsersSql")
+  ),
+  #----------------------- tab:  most Active flows ----------------------------
   tabItem(tabName = "flows",
           DT::dataTableOutput("flowsTable"),
-          textOutput('flowq'))
+          htmlOutput("flowSql")
+  )
   
 ))
+ 
+
 
 ui <- dashboardPage(header, sidebar, body)
 
@@ -229,13 +234,11 @@ con <-
   )
 
 server <- function(input, output) {
-  # all activity
+  
   professionq = function(x) { paste0("p.name LIKE '",x ,"'") }
   localeq = function(x) { paste0("u.locale LIKE '", x, "'") }
   uroleq = function(x) { paste0("u.role_id LIKE '", x, "'") }
-  
   users_sub = function(activityLang, userRole, activityProf){    
-    
     conditions = c(
       (if (activityLang != 'all') localeq(activityLang) else NULL),
       (if (userRole != 'all') uroleq(userRole) else NULL),
@@ -245,13 +248,14 @@ server <- function(input, output) {
     conditions = if(nchar(conditions) > 0) paste0("WHERE ", conditions) else ''
     paste('WITH users_sub as (select u.*, p.name from users u LEFT JOIN professions p ON u.profession_id = p._id ', conditions,  ")", sep=" ")
   }
-  activitySql = reactive({
+  
+  # ---------------  all activity over time -----------------------
+  
+  activitySql = reactive({    
     paste(users_sub(input$activityLang, input$userRole, input$activityProf), "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner_m a RIGHT JOIN users_sub u ON a.user_id = u._id GROUP BY date::date")
   })
   output$activitySql = reactive({ activitySql() })
-  
-  activityData = reactive({
-    pall = dbGetQuery(con, activitySql())
+  activityData = reactive({pall = dbGetQuery(con, activitySql())
     if (nrow(pall) == 0) {
       c("empty", "empty")
     } else {
@@ -288,7 +292,7 @@ server <- function(input, output) {
     dygraph(pqxts) %>% dyRangeSelector %>% dyRoller(rollPeriod = as.numeric(input$rollPeriodpost))
   })
   
-# ---------------  users count V.S. pOSTS cOUNT -----------------------
+# ---------------  users count V.S. POSTS COUNT -----------------------
   # posts users 
   postsUsersSql = reactive({ 
     typeq = if(input$postType != 'all') paste0(" WHERE p.post_type LIKE '", input$postType, "' AND ") else " WHERE "
@@ -372,48 +376,57 @@ server <- function(input, output) {
     )
   })
   output$cumulUsersSql = reactive({ cumulUsersSql()})
-  cumulUsersData = reactive({
-    dbGetQuery(con, cumulUsersSql())
-  })
+  cumulUsersData = reactive({    dbGetQuery(con, cumulUsersSql())  })
+  
   output$cumulUsersPlot = renderPlot({
-    ggplot(cumulUsersData(), aes(date)) + stat_bin(aes(y = cumsum(..count..)), geom="step", col='blue') + scale_x_date(date_breaks = "1 month", date_minor_breaks = "1 week", labels=date_format("%m/%y"))  
+    p=cumulUsersData()
+    ggplot(p, aes(date)) + stat_bin(aes(y = cumsum(..count..)), geom="step", col='blue') + scale_x_date(date_breaks = "1 month", date_minor_breaks = "1 week", labels=date_format("%m/%y"))  
   })
   
 #-------------------- most active users ---------------
-  # most active users
+  mostActiveUsersSql =reactive({  "WITH postcnt AS (SELECT count(*) AS n, owner_id AS uid FROM posts GROUP BY uid),
+                        ldcnt AS (SELECT count(*) AS n, apprentice_id AS uid FROM learning_doc_entries WHERE deleted = FALSE GROUP BY uid)
+                        SELECT u._id as personalflow, u.first_name, u.last_name, coalesce(max(p.n),0) as postsn, coalesce(max(l.n),0) as ldocsn FROM users u FULL JOIN postcnt p ON u._id = p.uid FULL JOIN ldcnt l ON u._id = l.uid GROUP BY u._id;"
+  })
+                      
+  output$mostActiveUsersSql = reactive({ mostActiveUsersSql()})
+  mostactiveUData = reactive({    dbGetQuery(con, mostActiveUsersSql())  })
+  
+  
   output$mostActiveTable <- DT::renderDataTable({
-    mostactiveq = "WITH postcnt AS (SELECT count(*) AS n, owner_id AS uid FROM posts GROUP BY uid),
-    ldcnt AS (SELECT count(*) AS n, apprentice_id AS uid FROM learning_doc_entries WHERE deleted = FALSE GROUP BY uid)
-    SELECT u._id as personalflow, u.first_name, u.last_name, coalesce(max(p.n),0) as postsn, coalesce(max(l.n),0) as ldocsn FROM users u FULL JOIN postcnt p ON u._id = p.uid FULL JOIN ldcnt l ON u._id = l.uid GROUP BY u._id;"
-    mostactive = dbGetQuery(con, mostactiveq)
-    mostactive$posts = paste0(
-      "<a href=https://www.realto.ch/userFlow/", mostactive$personalflow,">",
-      as.numeric(mostactive$postsn),"</a>"
+    p = mostactiveUData()
+    # p=mostactiveUData
+    p$posts = paste0(
+      "<a href=https://www.realto.ch/userFlow/", p$personalflow,">",
+      as.numeric(p$postsn),"</a>"
     )
-    mostactive$learndocs = paste0(
+    p$learndocs = paste0(
       "<a href=https://www.realto.ch/learnDoc?apprentice=",
-      mostactive$personalflow,  ">", as.numeric(mostactive$ldocsn),  "</a>"
+      p$personalflow,  ">", as.numeric(p$ldocsn),  "</a>"
     )
-    mostactive$personalflow = NULL
-    mostactive$postsn = NULL
-    mostactive$ldocsn = NULL
-    mostactive
+    p$personalflow = NULL
+    p$postsn = NULL
+    p$ldocsn = NULL
+    p
   }, escape = F, server = F)
-  flowq = "WITH p_n AS (SELECT flow_id, count(*) AS n FROM posts GROUP BY flow_id),
-    p_wk AS (SELECT flow_id, count(*) AS n FROM posts WHERE (created_at > CURRENT_DATE - INTERVAL '7 days')
-  GROUP BY flow_id),
-  ff AS (SELECT f._id, coalesce(max(p_n.n),0) AS alltime, coalesce(max(p_wk.n),0) AS last7 FROM flows f FULL JOIN p_n ON f._id = p_n.flow_id FULL JOIN p_wk ON f._id = p_wk.flow_id WHERE f.type LIKE 'group' OR f.type LIKE 'school' AND f.deleted = FALSE GROUP BY f._id)
-  SELECT flows._id AS id, flows.name, alltime, last7 FROM ff LEFT JOIN flows ON ff._id = flows._id;"
-  output$flowq = reactive({flowq})
 
 #-------------------- most active flows ---------------
    # most active flows table
+  flowSql = reactive({"WITH p_n AS (SELECT flow_id, count(*) AS n FROM posts GROUP BY flow_id),
+            p_wk AS (SELECT flow_id, count(*) AS n FROM posts WHERE (created_at > CURRENT_DATE - INTERVAL '7 days')
+            GROUP BY flow_id),
+            ff AS (SELECT f._id, coalesce(max(p_n.n),0) AS alltime, coalesce(max(p_wk.n),0) AS last7 FROM flows f FULL JOIN p_n ON f._id = p_n.flow_id FULL JOIN p_wk ON f._id = p_wk.flow_id WHERE f.type LIKE 'group' OR f.type LIKE 'school' AND f.deleted = FALSE GROUP BY f._id)
+            SELECT flows._id AS id, flows.name, alltime, last7 FROM ff LEFT JOIN flows ON ff._id = flows._id;"})
+ 
+  output$flowSql = reactive({flowSql()})
+  flowData = reactive({    dbGetQuery(con, flowSql())  })
+  
   output$flowsTable <- DT::renderDataTable({
-    flowd = dbGetQuery(con, flowq)
-    flowd$name = paste0("<a href=https://www.realto.ch/userFlow/",
-                        flowd$id,">",flowd$name,"</a>")
-    flowd$id = NULL
-    flowd
+    p = flowData()#dbGetQuery(con, flowSql)
+    p$name = paste0("<a href=https://www.realto.ch/userFlow/",
+                        p,">",p$name,"</a>")
+    p$id = NULL
+    p
   }, escape = F, server = F, caption = "Number of posts per flow, all time, or in the last 7 days")
 }
 
