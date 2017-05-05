@@ -18,8 +18,8 @@ getPostSequencePlot <-  function (p, input){
     scale_x_date(breaks = waiver(),labels = date_format("%d %b %y"),limits = c(startT,endT) )+labs( main='')
   
 }
+#----------------- individuals platform usage
 
-#----------------- clusters of platform usage
 getUsageBarPlot<-  function(p, input) {
   p$comment=p$comments_n; p$comments_n=NULL
   fs=c( "satndard_posts", "learning_document","activity_submission", "activity","comment" )
@@ -32,17 +32,18 @@ getUsageBarPlot<-  function(p, input) {
   ggplot(mp, aes(user_Name,value)) +geom_bar(stat = "identity", aes(fill = type))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
   
 }
+#----------------- clusters of platform usage
 
 getUsageClusterPlot<-  function(p, input) {
   p$comment=p$comments_n; p$comments_n=NULL
-  fs=c( "satndard_posts", "learning_document","activity_submission", "activity","comment" )
+  fs=c( "learning_document","satndard_posts", "activity_submission", "activity","comment" )
   #++++++++++++++++1 cluster users based on behaviours -----------
   pointsToCluster <- p [, fs]
   Nclust=input$users_clust_cnt
   n=nrow(pointsToCluster)
   #------- 'CLARA' ----------
   clMethod='CLARA'
-  sample_size=100;
+  sample_size=min(n,100);
   set.seed(123456); fitClara=clara(pointsToCluster, k=Nclust,samples=(n/sample_size)*2, sampsize=sample_size, keep.data=F)
   cluster=(fitClara$clustering); table(cluster)
   #-----------2. boxplot split by cluster, scale all measures to 0-1 range
@@ -52,11 +53,12 @@ getUsageClusterPlot<-  function(p, input) {
   subset2=merge(subset2, cn)
   subset2$cluster= paste('Cluster',subset2$cluster, '(N:', subset2$Freq, ')')
   subset2=subset2[c(fs,'cluster' )]
-  subset2<- data.frame(lapply(subset2, function(y) if(is.numeric(y)) (y-min(y, na.rm = T))/(max(y, na.rm = T)-min(y, na.rm = T)) else y)) # # N(m=0, sigma=1)
+  if (input$NormalizeVals)
+    subset2<- data.frame(lapply(subset2, function(y) if(is.numeric(y)) (y)/(max(y, na.rm = T)+0.001) else y)) # 
   melted<-melt(subset2,id=c("cluster")); melted$type=melted$variable; melted$variable=NULL
   
   ggplot(melted, aes(type,value, fill=type ))+geom_boxplot( outlier.shape=1)+facet_wrap(~cluster)+
-      theme(text = element_text(25),axis.text.x = element_blank())+
+      theme(text = element_text(30),axis.text.x = element_blank())+
       labs(title="",   x =" ", y = "Normalized Value" )
     
 }

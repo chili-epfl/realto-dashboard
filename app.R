@@ -129,19 +129,23 @@ body <- dashboardBody(tabItems(
           DT::dataTableOutput("mostActiveTable"),
           htmlOutput("mostActiveUsersSql")
   ),
+
+#----------------------- tab: platform usage clusters ----------------------------
+
 tabItem(tabName = "Usersclusters",
         h3("Clusters of users based on their platform usage"),
         h5("Use slider below the chart to change the number of clustes."),
         plotOutput("usageClustersPlot"),
         flowLayout(
-          sliderInput("users_clust_cnt:","Nubmer of clusters", 2, 8, 5),
+          sliderInput("users_clust_cnt:","Nubmer of clusters", 1, 8, 3),
+          checkboxInput("NormalizeVals", 'Normalize values', value = TRUE, width = NULL),
           radioButtons("userClustProf", "Professions",professionsList  ),
-          radioButtons("userClustProfLang","Languages", languageList ),
-          radioButtons( "userClustRole","User role",roleList)
+          radioButtons("userClustLang","Languages", languageList ),
+          radioButtons( "userClustRole","User role",roleList)  
         ),
-        plotOutput("usageBarPlot")
-#         DT::dataTableOutput("mostActiveTable"),
-#         htmlOutput("mostActiveUsersSql")
+        plotOutput("usageBarPlot"),
+        DT::dataTableOutput("usageTable"),
+        htmlOutput("UsersclusterSql")
 ),
 
   #----------------------- tab:  most Active flows ----------------------------
@@ -309,8 +313,8 @@ server <- function(input, output) {
 #                         SELECT u._id as personalflow, u.first_name, u.last_name, coalesce(max(p.n),0) as postsn, coalesce(max(l.n),0) as ldocsn FROM users u FULL JOIN postcnt p ON u._id = p.uid FULL JOIN ldcnt l ON u._id = l.uid GROUP BY u._id;"
 #   })
 
-  
-  mostActiveUsersSql =reactive({  "WITH AllPostCnt AS (SELECT count(*) AS n, owner_id AS uid FROM posts where deleted = FALSE GROUP BY uid),
+
+  posts_comment_lds_query= ", AllPostCnt AS (SELECT count(*) AS n, owner_id AS uid FROM posts where deleted = FALSE GROUP BY uid),
   StandardPostCnt AS (SELECT count(*) AS n, owner_id AS uid FROM posts where post_type LIKE 'standard' AND deleted = FALSE GROUP BY uid),
   LDPostCnt AS (SELECT count(*) AS n, owner_id AS uid FROM posts where post_type IN ( 'learnDoc','standardLd','learningJournal') AND deleted = FALSE GROUP BY uid),
   ActivitySub AS (SELECT count(*) AS n, owner_id AS uid FROM posts where post_type IN ( 'activitySubmission') AND deleted = FALSE GROUP BY uid),
@@ -318,27 +322,17 @@ server <- function(input, output) {
   ldcnt AS (SELECT count(*) AS n, apprentice_id AS uid FROM learning_doc_entries WHERE deleted = FALSE GROUP BY uid),
   commentsCnt AS (SELECT count(*) AS n, owner_id AS uid FROM post_comments where deleted = FALSE GROUP BY uid)
   SELECT u._id as personalflow, u.first_name, u.last_name,
-  coalesce(max(l.n),0) as learning_document ,
-  coalesce(max(a.n),0) as all_post_types,
-  coalesce(max(s.n),0) as satndard_posts  ,coalesce(max(ldp.n),0) as ld_posts ,
+  coalesce(max(l.n),0) as learning_document ,  coalesce(max(a.n),0) as all_post_types,  coalesce(max(s.n),0) as satndard_posts  ,coalesce(max(ldp.n),0) as ld_posts ,
   coalesce(max(asp.n),0) as activity_submission ,coalesce(max(act.n),0) as activity  ,coalesce(max(cmn.n),0) as comments_n
-  FROM users u 
-  FULL JOIN AllPostCnt a ON u._id = a.uid 
-  FULL JOIN StandardPostCnt s ON u._id = s.uid 
-  FULL JOIN ldcnt l ON u._id = l.uid
-  FULL JOIN LDPostCnt ldp ON u._id = ldp.uid 
-  FULL JOIN ActivitySub asp ON u._id = asp.uid 
-  FULL JOIN Activity act ON u._id = act.uid 
-  FULL JOIN commentsCnt cmn ON u._id = cmn.uid 
-  GROUP BY u._id;"
-  })
-     
+  FROM users_sub u 
+  FULL JOIN AllPostCnt a ON u._id = a.uid   FULL JOIN StandardPostCnt s ON u._id = s.uid   FULL JOIN ldcnt l ON u._id = l.uid
+  FULL JOIN LDPostCnt ldp ON u._id = ldp.uid   FULL JOIN ActivitySub asp ON u._id = asp.uid   FULL JOIN Activity act ON u._id = act.uid 
+  FULL JOIN commentsCnt cmn ON u._id = cmn.uid   GROUP BY u._id,u._id,u.first_name, u.last_name;;"
+  mostActiveUsersSql =reactive({ paste( users_sub('all','all','all'),posts_comment_lds_query)})
+  output$mostActiveUsersSql = reactive({ mostActiveUsersSql()})
+  mostactiveUData = reactive({    p=dbGetQuery(con, mostActiveUsersSql());  p=filter(p, !is.na(first_name))})
   # columns are:
   # standard_post_n, learning_document ,activity ,activity_submission, comments_n, all_post_types, ld_posts , 
-
-  output$mostActiveUsersSql = reactive({ mostActiveUsersSql()})
-  mostactiveUData = reactive({    dbGetQuery(con, mostActiveUsersSql())  })
-  
   output$mostActiveTable <- DT::renderDataTable({
     p = mostactiveUData()
     p$satndard_posts = paste0("<a href=https://www.realto.ch/userFlow/", p$personalflow,">",      as.numeric(p$satndard_posts),"</a>"  )
@@ -349,16 +343,36 @@ server <- function(input, output) {
     p$ld_posts=NULL
     p
   }, escape = F, server = F)
+  
+  #--------------------- clusters of platform usagegb
+  
+  UsersclusterSql =reactive({ paste( users_sub(input$userClustLang, input$userClustRole, input$userClustProf),posts_comment_lds_query)})
+  output$UsersclusterSql = reactive({ UsersclusterSql()})
+  UsersclusterData = reactive({    p=dbGetQuery(con, UsersclusterSql());  p=filter(p, !is.na(first_name))})
+  
+  # columns are:
+  # standard_post_n, learning_document ,activity ,activity_submission, comments_n, all_post_types, ld_posts , 
 
   output$usageClustersPlot = renderPlot({
-    p=mostactiveUData()
+    p=UsersclusterData()
     getUsageClusterPlot(p, input)
   })
   
   output$usageBarPlot = renderPlot({
-    p=mostactiveUData()
+    p=UsersclusterData()
     getUsageBarPlot(p, input)
   })
+  
+  output$usageTable<- DT::renderDataTable({
+    p = UsersclusterData()
+    p$satndard_posts = paste0("<a href=https://www.realto.ch/userFlow/", p$personalflow,">",      as.numeric(p$satndard_posts),"</a>"  )
+    p$learning_document = paste0("<a href=https://www.realto.ch/learnDoc?apprentice=",p$personalflow,  ">", as.numeric(p$learning_document),  "</a>"    )
+    p$comment=p$comments_n; p$comments_n=NULL
+    p$personalflow = NULL
+    p$all_post_types = NULL
+    p$ld_posts=NULL
+    p
+  }, escape = F, server = F)
 #-------------------- most active flows ---------------
    # most active flows table
   flowSql = reactive({"WITH p_n AS (SELECT flow_id, count(*) AS n FROM posts GROUP BY flow_id),
