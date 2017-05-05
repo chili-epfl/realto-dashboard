@@ -14,12 +14,51 @@ library(reshape2)
 library(googleVis)
 library(reshape)
 library(cluster)
+# install_github ('ramnathv/rCharts')
+library(rCharts) # for sankey diagram
 source("./eventcount.R")
 source("./password.R")
 source("./preparePlots.R")
 
-
-
+########################################## filters #################################
+  #-----------filters
+  professionsList=c(
+    "All" = "all",
+    "Clothing designers" = "clothesDesigner",
+    "Florists" = "florist",
+    "Carpenters" = "carpenter",
+    "Multimedia electronicians" = "multimediaElectronician",
+    "Painter" = 'painter',
+    "Automatiker"="automatiker"
+    # "Sanitaire"="sanitaire",
+    # "ElectricalFitter"="electricalFitter",
+    # "Mecanic Production"="mecanicProduction",
+    # "PolyMecanic"="polyMecanic"
+  )
+  
+  languageList=c(
+    "All" = "all",
+    "German" = "de",
+    "French" = "fr",
+    "Italian" = "it"
+  )
+  roleList=c(
+    "All"="all",
+    "Apprentice"="apprentice",
+    "Teacher"="teacher",
+    "Supervisor"="supervisor"
+  )
+  postTypeList=
+    c(
+      "All"="all",
+      "standard post"="standard",
+      "learnDoc"="learnDoc",
+      "activity"="activity",
+      "activity Submission"="activitySubmission",
+      #"learningJournal"="learningJournal",
+      "standardLd"="standardLd"
+    )
+########################################## UI #################################
 header <- dashboardHeader(title = "REALTO dashboard")
 
 sidebar <- dashboardSidebar(sidebarMenu(
@@ -29,50 +68,12 @@ sidebar <- dashboardSidebar(sidebarMenu(
   menuItem("Users", tabName = "uniqueUsers",    icon = icon("th") ),
   menuItem("Most active users", tabName = "mostActiveUsers", icon = icon("th")),
   menuItem("Users clusters", tabName = "Usersclusters", icon = icon("th")),
+  menuItem("Social Network", tabName = "SocialNetwork", icon = icon("th")),
   menuItem("REALTO", icon = icon("file-code-o"), href = "https://www.realto.ch")
 ))
 
 
-#-----------filters
-professionsList=c(
-  "All" = "all",
-  "Clothing designers" = "clothesDesigner",
-  "Florists" = "florist",
-  "Carpenters" = "carpenter",
-  "Multimedia electronicians" = "multimediaElectronician",
-  "Painter" = 'painter',
-  "Automatiker"="automatiker"
-  # "Sanitaire"="sanitaire",
-  # "ElectricalFitter"="electricalFitter",
-  # "Mecanic Production"="mecanicProduction",
-  # "PolyMecanic"="polyMecanic"
-)
-
-languageList=c(
-  "All" = "all",
-  "German" = "de",
-  "French" = "fr",
-  "Italian" = "it"
-)
-roleList=c(
-  "All"="all",
-  "Apprentice"="apprentice",
-  "Teacher"="teacher",
-  "Supervisor"="supervisor"
-)
-postTypeList=
-  c(
-    "All"="all",
-    "standard post"="standard",
-    "learnDoc"="learnDoc",
-    "activity"="activity",
-    "activity Submission"="activitySubmission",
-    #"learningJournal"="learningJournal",
-    "standardLd"="standardLd"
-  )
-#------------------
 body <- dashboardBody(tabItems(
-  # First tab content
   #----------------------- tab: activity ----------------------------
   tabItem( tabName = "activity",
     dygraphOutput("rollerActivities"),
@@ -131,14 +132,13 @@ body <- dashboardBody(tabItems(
   ),
 
 #----------------------- tab: platform usage clusters ----------------------------
-
-tabItem(tabName = "Usersclusters",
+  tabItem(tabName = "Usersclusters",
         h3("Clusters of users based on their platform usage"),
         h5("Use slider below the chart to change the number of clustes."),
         plotOutput("usageClustersPlot"),
         flowLayout(
-          sliderInput("users_clust_cnt:","Nubmer of clusters", 1, 8, 3),
-          checkboxInput("NormalizeVals", 'Normalize values', value = TRUE, width = NULL),
+          sliderInput("users_clust_cnt:","Nubmer of clusters", 1, 8, 1),
+          checkboxInput("NormalizeVals", 'Normalize values', value = FALSE, width = NULL),
           radioButtons("userClustProf", "Professions",professionsList  ),
           radioButtons("userClustLang","Languages", languageList ),
           radioButtons( "userClustRole","User role",roleList)  
@@ -146,30 +146,40 @@ tabItem(tabName = "Usersclusters",
         plotOutput("usageBarPlot"),
         DT::dataTableOutput("usageTable"),
         htmlOutput("UsersclusterSql")
-),
+  ),
 
-  #----------------------- tab:  most Active flows ----------------------------
+ #----------------------- tab:  most Active flows ----------------------------
   tabItem(tabName = "flows",
-          DT::dataTableOutput("flowsTable"),
-          htmlOutput("flowSql")
+      DT::dataTableOutput("flowsTable"),
+      htmlOutput("flowSql")
+  ),
+ #----------------------- tab:  Social network ----------------------------
+
+  tabItem(tabName = "SocialNetwork",
+          h3("Social network of users"),
+          h5("Use slider below the chart to change the number of visualized connections (strongest on top)."),
+          showOutput('socialNetPlot', 'd3_sankey'),
+          flowLayout(
+            sliderInput("social_num_link:","Nubmer of connections", 2, 300, 30),
+            radioButtons( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
+            radioButtons("socialProf", "Professions",professionsList  ),
+            radioButtons("socialLang","Languages", languageList )
+          ),
+          
+        htmlOutput("socialNetSql")
   )
 ))
- 
+
 
 ui <- dashboardPage(header, sidebar, body)
 
+########################################## SERVER ##########################################
+
 drv <- dbDriver("PostgreSQL")
-con <-
-  dbConnect(
-    drv,
-    host = "icchilisrv1.epfl.ch",
-    user = "shiny",
-    dbname = "realto",
-    password = password
-  )
+con <- dbConnect(    drv,     host = "icchilisrv1.epfl.ch",    
+                     user = "shiny",    dbname = "realto",    password = password  )
 
 server <- function(input, output) {
-  
   professionq = function(x) { paste0("p.name LIKE '",x ,"'") }
   localeq = function(x) { paste0("u.locale LIKE '", x, "'") }
   uroleq = function(x) { paste0("u.role_id LIKE '", x, "'") }
@@ -184,7 +194,8 @@ server <- function(input, output) {
     paste('WITH users_sub as (select u.*, p.name from users u LEFT JOIN professions p ON u.profession_id = p._id ', conditions,  ")", sep=" ")
   }
   
-  # ---------------  all activity over time -----------------------
+  #----------------------- tab: activity ----------------------------
+  # all activity over time -----------------------
   
   activitySql = reactive({    
     paste(users_sub(input$activityLang, input$userRole, input$activityProf), "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner_m a RIGHT JOIN users_sub u ON a.user_id = u._id GROUP BY date::date")
@@ -343,9 +354,8 @@ server <- function(input, output) {
     p$ld_posts=NULL
     p
   }, escape = F, server = F)
-  
+  #----------------------- tab: platform usage clusters ----------------------------
   #--------------------- clusters of platform usagegb
-  
   UsersclusterSql =reactive({ paste( users_sub(input$userClustLang, input$userClustRole, input$userClustProf),posts_comment_lds_query)})
   output$UsersclusterSql = reactive({ UsersclusterSql()})
   UsersclusterData = reactive({    p=dbGetQuery(con, UsersclusterSql());  p=filter(p, !is.na(first_name))})
@@ -373,6 +383,52 @@ server <- function(input, output) {
     p$ld_posts=NULL
     p
   }, escape = F, server = F)
+#--------------------- tab:  social network -----------------------
+  socialNetSql =reactive({ paste(  users_sub(input$socialLang, 'all', input$socialProf),
+                                   ",links as(select  a.owner_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'comment' AS link_type
+                                            from post_comments a LEFT JOIN posts b on a.post_id=b._id
+                                            UNION ALL
+                                            select  a.user_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'like' AS link_type
+                                            from post_likes a LEFT JOIN posts b on a.post_id=b._id      
+                                   ),
+                                   network as ( SELECT  links.*, u.first_name as from_first_name, u.last_name as from_last_name, u2.first_name as to_first_name, u2.last_name as to_last_name
+                                                from links  INNER JOIN  users_sub u on links.from_uid   = u._id  
+                                                INNER JOIN  users_sub u2 on  links.to_uid = u2._id )
+                                   select net.from_first_name,net.from_last_name, net.to_first_name , net.to_last_name, count(net.*) as weight 
+                                   from network net where link_type IN (", input$socialLinkType,")",
+                                   "group by net.from_first_name,net.from_last_name, net.to_first_name , net.to_last_name"                                    
+  )})
+  output$socialNetSql = reactive({ socialNetSql()})
+  
+  socialNetData = reactive({  dbGetQuery(con, socialNetSql())})
+  
+  # columns are: from_first_name,from_last_name, to_first_name , to_last_name,  weight
+  output$socialNetPlot = renderChart2({
+    p=socialNetData()
+    getSocialNetPlot(p, input)
+  })
+
+  #----------------------- tab:  Social network ----------------------------
+
+# 
+#       output$sankey <-  renderChart2({
+#       dat <- data.frame(From=c(rep("A",3), rep("B", 3)), 
+#                         To=c(rep(c("X", "Y", "Z"),2)), 
+#                         value=c(5,7,6,2,9,4))
+#       colnames(dat) <- c("source", "target", "value")
+#       sankeyPlot <- rCharts$new()
+#       sankeyPlot$setLib("./d3_sankey")
+#       # sankeyPlot$setLib('./rCharts_d3_sankey-gh-pages/libraries/widgets/sankey')
+#       
+#       sankeyPlot$set(
+#         data = dat,
+#         nodeWidth = 15,
+#         nodePadding = 15,
+#         layout = 30
+#       )
+#       return(sankeyPlot)
+#     })    
+
 #-------------------- most active flows ---------------
    # most active flows table
   flowSql = reactive({"WITH p_n AS (SELECT flow_id, count(*) AS n FROM posts GROUP BY flow_id),

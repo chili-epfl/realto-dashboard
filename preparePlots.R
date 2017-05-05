@@ -1,3 +1,5 @@
+setwd("~/Dropbox/Mina/RealtoResearchDashboard/realto-dashboard")
+# ========================== sequence of post types =====================================
 getPostSequencePlot <-  function (p, input){
  
   dateLimits= input$rollerPost_date_window  
@@ -18,7 +20,31 @@ getPostSequencePlot <-  function (p, input){
     scale_x_date(breaks = waiver(),labels = date_format("%d %b %y"),limits = c(startT,endT) )+labs( main='')
   
 }
-#----------------- individuals platform usage
+#============================ Social networ ================================================
+getSocialNetPlot <-  function(p, input){
+  p$from_fullName= paste(p$from_first_name, p$from_last_name)
+  p$to_fullName= paste(p$to_first_name, p$to_last_name)
+  p=p[, c('from_fullName' , 'to_fullName' ,'weight'  )]
+  colnames(p) <- c("source", "target", "value")
+  # remove self loops, as sankey doesn't support that
+  p = filter(p, source != target)
+  #---- number of links to be shown
+  links_count = min (nrow(p) , input$social_num_link)
+  # change target labels, in sankey if source and target overlap, they 
+  p$target=paste0(p$target,' ')
+  # sort : highest weights on top
+  p=p[order(-p$value),]
+  sankeyPlot <- rCharts$new()
+  sankeyPlot$setLib("./d3_sankey")
+  sankeyPlot$set(
+    data = p[1:links_count,],    nodeWidth = 30,    nodePadding = 7,    layout = 30,
+    width = 1200,     height =700,
+    labelFormat = "0.01"
+  )
+  (sankeyPlot)
+}
+
+# ========================== individuals platform usage =====================================
 
 getUsageBarPlot<-  function(p, input) {
   p$comment=p$comments_n; p$comments_n=NULL
@@ -32,8 +58,7 @@ getUsageBarPlot<-  function(p, input) {
   ggplot(mp, aes(user_Name,value)) +geom_bar(stat = "identity", aes(fill = type))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
   
 }
-#----------------- clusters of platform usage
-
+#============================ clusters of platform usage ================================================
 getUsageClusterPlot<-  function(p, input) {
   p$comment=p$comments_n; p$comments_n=NULL
   fs=c( "learning_document","satndard_posts", "activity_submission", "activity","comment" )
@@ -43,7 +68,7 @@ getUsageClusterPlot<-  function(p, input) {
   n=nrow(pointsToCluster)
   #------- 'CLARA' ----------
   clMethod='CLARA'
-  sample_size=min(n,100);
+  sample_size=min(n,input$social_num_link);
   set.seed(123456); fitClara=clara(pointsToCluster, k=Nclust,samples=(n/sample_size)*2, sampsize=sample_size, keep.data=F)
   cluster=(fitClara$clustering); table(cluster)
   #-----------2. boxplot split by cluster, scale all measures to 0-1 range
