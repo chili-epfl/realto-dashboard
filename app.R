@@ -14,12 +14,16 @@ library(reshape2)
 library(googleVis)
 library(reshape)
 library(cluster)
+library(igraph)
+library(networkD3)
 # install_github ('ramnathv/rCharts')
+# devtools::install_github("dgrapov/networkly")
 library(rCharts) # for sankey diagram
 source("./eventcount.R")
 source("./password.R")
 source("./preparePlots.R")
-
+data(MisLinks)
+data(MisNodes)
 ########################################## filters #################################
   #-----------filters
   professionsList=c(
@@ -75,6 +79,7 @@ sidebar <- dashboardSidebar(sidebarMenu(
 
 body <- dashboardBody(tabItems(
   #----------------------- tab: activity ----------------------------
+
   tabItem( tabName = "activity",
     dygraphOutput("rollerActivities"),
     flowLayout(
@@ -154,18 +159,22 @@ body <- dashboardBody(tabItems(
       htmlOutput("flowSql")
   ),
  #----------------------- tab:  Social network ----------------------------
-
   tabItem(tabName = "SocialNetwork",
           h3("Social network of users"),
-          h5("Use slider below the chart to change the number of visualized connections (strongest on top)."),
-          showOutput('socialNetPlot', 'd3_sankey'),
+          #-----force net
+             forceNetworkOutput("socialNetPlot_force"),
+          #-----sankey
+#             h5("Use slider to change the number of visualized connections (strongest on top)."),
+#             sliderInput("social_num_link:","Nubmer of connections", 2, 300, 30),
+#             showOutput('socialNetPlot_sankey', 'd3_sankey'),
+          #-------
+          # plotOutput( 'socialNetPlot_igraph'),
           flowLayout(
-            sliderInput("social_num_link:","Nubmer of connections", 2, 300, 30),
+            # sliderInput("social_num_link:","Nubmer of connections", 2, 300, 30),
             radioButtons( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
             radioButtons("socialProf", "Professions",professionsList  ),
             radioButtons("socialLang","Languages", languageList )
           ),
-          
         htmlOutput("socialNetSql")
   )
 ))
@@ -403,31 +412,23 @@ server <- function(input, output) {
   socialNetData = reactive({  dbGetQuery(con, socialNetSql())})
   
   # columns are: from_first_name,from_last_name, to_first_name , to_last_name,  weight
-  output$socialNetPlot = renderChart2({
+  output$socialNetPlot_sankey = renderChart2({
     p=socialNetData()
-    getSocialNetPlot(p, input)
+    getSocialNetPlot_sankey(p, input)
   })
+  
+  output$socialNetPlot_igraph = renderPlot({
+    p=socialNetData()
+    getsocialNetPlot_igraph(p, input)
+  })
+  output$socialNetPlot_force = renderForceNetwork({
+    p=socialNetData()
+    getSocialNetPlot_force(p, input)
+  })
+  
 
   #----------------------- tab:  Social network ----------------------------
 
-# 
-#       output$sankey <-  renderChart2({
-#       dat <- data.frame(From=c(rep("A",3), rep("B", 3)), 
-#                         To=c(rep(c("X", "Y", "Z"),2)), 
-#                         value=c(5,7,6,2,9,4))
-#       colnames(dat) <- c("source", "target", "value")
-#       sankeyPlot <- rCharts$new()
-#       sankeyPlot$setLib("./d3_sankey")
-#       # sankeyPlot$setLib('./rCharts_d3_sankey-gh-pages/libraries/widgets/sankey')
-#       
-#       sankeyPlot$set(
-#         data = dat,
-#         nodeWidth = 15,
-#         nodePadding = 15,
-#         layout = 30
-#       )
-#       return(sankeyPlot)
-#     })    
 
 #-------------------- most active flows ---------------
    # most active flows table

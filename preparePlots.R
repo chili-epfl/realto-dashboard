@@ -21,7 +21,7 @@ getPostSequencePlot <-  function (p, input){
   
 }
 #============================ Social networ ================================================
-getSocialNetPlot <-  function(p, input){
+getSocialNetPlot_sankey <-  function(p, input){
   p$from_fullName= paste(p$from_first_name, p$from_last_name)
   p$to_fullName= paste(p$to_first_name, p$to_last_name)
   p=p[, c('from_fullName' , 'to_fullName' ,'weight'  )]
@@ -38,11 +38,60 @@ getSocialNetPlot <-  function(p, input){
   sankeyPlot$setLib("./d3_sankey")
   sankeyPlot$set(
     data = p[1:links_count,],    nodeWidth = 30,    nodePadding = 7,    layout = 30,
-    width = 1200,     height =700,
+    width = 1200,     height =600,
     labelFormat = "0.01"
   )
   (sankeyPlot)
 }
+
+getsocialNetPlot_igraph <-  function(p, input){
+    p$from_fullName= paste(p$from_first_name, p$from_last_name)
+    p$to_fullName= paste(p$to_first_name, p$to_last_name)
+    p=p[, c('from_fullName' , 'to_fullName' ,'weight'  )]
+    colnames(p) <- c("source", "target", "value")
+    # remove self loops, as sankey doesn't support that
+    p = filter(p, source != target)
+    
+    library(igraph)
+    edgeslist=(p[,c("source", "target")])
+    edgeslist=  as.vector(as.character(as.matrix(t(edgeslist))))
+    
+    g <- graph(edgeslist)
+    E(g)$weight <- p$value
+   
+    deg <- degree(g, mode="all")
+    plot.igraph(g, layout=layout_with_fr,vertex.size=deg, edge.arrow.size=.6)
+
+}
+
+getSocialNetPlot_force <-  function(p, input){
+  p$from_fullName= paste(p$from_first_name, p$from_last_name)
+  p$to_fullName= paste(p$to_first_name, p$to_last_name)
+  p=p[, c('from_fullName' , 'to_fullName' ,'weight'  )]
+  colnames(p) <- c("source", "target", "value")
+  # remove self loops, as sankey doesn't support that
+  p = filter(p, source != target)
+  
+  library(igraph)
+  edgeslist=(p[,c("source", "target")])
+  edgeslist=  as.vector(as.character(as.matrix(t(edgeslist))))
+  
+  g <- graph(edgeslist)
+  E(g)$weight <- p$value
+  
+  #######
+  wc <- cluster_walktrap(g)
+  members <- membership(wc)
+  # Convert to object suitable for networkD3
+  g_d3 <- igraph_to_networkD3(g, group = members)
+  
+  # Convert to object suitable for networkD3
+  
+  forceNetwork(Links = g_d3$links, Nodes = g_d3$nodes,
+               Source = 'source', Target = 'target', NodeID = 'name',
+               Group = 'group',opacity = 1, bounded = TRUE,
+               opacityNoHover =1,height =900, fontSize = 9 ,linkWidth = networkD3::JS("function(d) { return d.value; }"))
+}   
 
 # ========================== individuals platform usage =====================================
 
