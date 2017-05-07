@@ -18,7 +18,7 @@ library(igraph)
 library(networkD3)
 # install_github ('ramnathv/rCharts')
 # devtools::install_github("dgrapov/networkly")
-library(rCharts) # for sankey diagram
+# library(rCharts) # for sankey diagram
 source("./eventcount.R")
 source("./password.R")
 source("./preparePlots.R")
@@ -162,20 +162,22 @@ body <- dashboardBody(tabItems(
   tabItem(tabName = "SocialNetwork",
           h3("Social network of users"),
           #-----force net
-             forceNetworkOutput("socialNetPlot_force"),
-          #-----sankey
-#             h5("Use slider to change the number of visualized connections (strongest on top)."),
-#             sliderInput("social_num_link:","Nubmer of connections", 2, 300, 30),
-#             showOutput('socialNetPlot_sankey', 'd3_sankey'),
-          #-------
-          # plotOutput( 'socialNetPlot_igraph'),
+          forceNetworkOutput("socialNetPlot_force"),
+          #---- options
           flowLayout(
             # sliderInput("social_num_link:","Nubmer of connections", 2, 300, 30),
             radioButtons( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
             radioButtons("socialProf", "Professions",professionsList  ),
             radioButtons("socialLang","Languages", languageList )
           ),
-        htmlOutput("socialNetSql")
+          #-----sankey
+          h3("Strongest connections"),
+          # h5("Use slider to change the number of visualized connections."),
+          sliderInput("social_num_link:","Nubmer of connections", 2, 300, 15),
+          sankeyNetworkOutput("socialNetPlot_sankey"),
+          # showOutput('socialNetPlot_sankey2', 'd3_sankey'),
+          #------- sql query
+          htmlOutput("socialNetSql")
   )
 ))
 
@@ -412,15 +414,16 @@ server <- function(input, output) {
   socialNetData = reactive({  dbGetQuery(con, socialNetSql())})
   
   # columns are: from_first_name,from_last_name, to_first_name , to_last_name,  weight
-  output$socialNetPlot_sankey = renderChart2({
-    p=socialNetData()
-    getSocialNetPlot_sankey(p, input)
-  })
+#   output$socialNetPlot_sankey2 = renderChart2({
+#     p=socialNetData()
+#     getSocialNetPlot_sankey2(p, input)
+#   })
+  output$socialNetPlot_sankey = renderSankeyNetwork({
+        p=socialNetData()
+        getSocialNetPlot_sankey(p, input)
+      })
+
   
-  output$socialNetPlot_igraph = renderPlot({
-    p=socialNetData()
-    getsocialNetPlot_igraph(p, input)
-  })
   output$socialNetPlot_force = renderForceNetwork({
     p=socialNetData()
     getSocialNetPlot_force(p, input)
