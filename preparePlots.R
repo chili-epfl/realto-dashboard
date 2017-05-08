@@ -1,4 +1,3 @@
-setwd("~/Dropbox/Mina/RealtoResearchDashboard/realto-dashboard")
 # ========================== sequence of post types =====================================
 getPostSequencePlot <-  function (p, input){
  
@@ -58,7 +57,6 @@ getSocialNetPlot_sankey <-  function(p, input){
     
   
     ####### first build igraph
-    library(igraph)
     edgeslist=(p[,c("source", "target")])
     edgeslist=  as.vector(as.character(as.matrix(t(edgeslist))))
     g <- graph(edgeslist)
@@ -84,7 +82,6 @@ getSocialNetPlot_force <-  function(p, input){
   # remove self loops, as sankey doesn't support that
   # p = filter(p, source != target)
   ####### first build igraph
-  library(igraph)
   edgeslist=(p[,c("source", "target")])
   edgeslist=  as.vector(as.character(as.matrix(t(edgeslist))))
   g <- graph(edgeslist)
