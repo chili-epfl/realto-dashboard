@@ -1,4 +1,3 @@
-setwd("~/Dropbox/Mina/RealtoResearchDashboard/realto-dashboard")
 # ========================== sequence of post types =====================================
 getPostSequencePlot <-  function (p, input){
  
