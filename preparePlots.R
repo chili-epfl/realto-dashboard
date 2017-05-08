@@ -19,29 +19,86 @@ getPostSequencePlot <-  function (p, input){
     scale_x_date(breaks = waiver(),labels = date_format("%d %b %y"),limits = c(startT,endT) )+labs( main='')
   
 }
-#============================ Social networ ================================================
-getSocialNetPlot <-  function(p, input){
+#============================ Social network ================================================
+# getSocialNetPlot_sankey2 <-  function(p, input){
+#   p$from_fullName= paste(p$from_first_name, p$from_last_name)
+#   p$to_fullName= paste(p$to_first_name, p$to_last_name)
+#   p=p[, c('from_fullName' , 'to_fullName' ,'weight'  )]
+#   colnames(p) <- c("source", "target", "value")
+#   # remove self loops, as sankey doesn't support that
+#   p = filter(p, source != target)
+#   #---- number of links to be shown
+#   links_count = min (nrow(p) , input$social_num_link)
+#   # change target labels, in sankey if source and target overlap, they 
+#   p$target=paste0(p$target,' ')
+#   # sort : highest weights on top
+#   p=p[order(-p$value),]
+#   sankeyPlot <- rCharts$new()
+#   sankeyPlot$setLib("./d3_sankey")
+#   sankeyPlot$set(
+#     data = p[1:links_count,],    nodeWidth = 30,    nodePadding = 7,    layout = 30,
+#     width = 900,     height =600,
+#     labelFormat = "0.01"
+#   )
+#   (sankeyPlot)
+# }
+getSocialNetPlot_sankey <-  function(p, input){
+    p$from_fullName= paste(p$from_first_name, p$from_last_name)
+    p$to_fullName= paste(p$to_first_name, p$to_last_name)
+    p=p[, c('from_fullName' , 'to_fullName' ,'weight'  )]
+    colnames(p) <- c("source", "target", "value")
+  # change target labels, in sankey if source and target overlap, they 
+    p$target=paste0(p$target,' ')
+  # remove self loops, as sankey doesn't support that
+    # p = filter(p, source != target)
+    p=p[order(-p$value),] #--- sort links based on weight
+    links_count = min (nrow(p) , input$social_num_link) #number of links to be shown
+    p=p[1:links_count,]# keep only 
+    
+  
+    ####### first build igraph
+    edgeslist=(p[,c("source", "target")])
+    edgeslist=  as.vector(as.character(as.matrix(t(edgeslist))))
+    g <- graph(edgeslist)
+    E(g)$weight <- p$value
+    
+    ####### then convert it to networkd3 graph
+    wc <- cluster_walktrap(g)
+    members <- membership(wc)
+    # Convert to object suitable for networkD3
+    g_d3 <- igraph_to_networkD3(g, group = members)
+    #--- plot as sankey net
+    sankeyNetwork(Links = g_d3$links, Nodes = g_d3$nodes,
+                Source = 'source', Target = 'target', NodeID = 'name', Value='value',
+                units = "TWh", fontSize = 12, nodeWidth = 30,nodePadding=15)
+  
+}   
+
+getSocialNetPlot_force <-  function(p, input){
   p$from_fullName= paste(p$from_first_name, p$from_last_name)
   p$to_fullName= paste(p$to_first_name, p$to_last_name)
   p=p[, c('from_fullName' , 'to_fullName' ,'weight'  )]
   colnames(p) <- c("source", "target", "value")
   # remove self loops, as sankey doesn't support that
-  p = filter(p, source != target)
-  #---- number of links to be shown
-  links_count = min (nrow(p) , input$social_num_link)
-  # change target labels, in sankey if source and target overlap, they 
-  p$target=paste0(p$target,' ')
-  # sort : highest weights on top
-  p=p[order(-p$value),]
-  sankeyPlot <- rCharts$new()
-  sankeyPlot$setLib("./d3_sankey")
-  sankeyPlot$set(
-    data = p[1:links_count,],    nodeWidth = 30,    nodePadding = 7,    layout = 30,
-    width = 1200,     height =700,
-    labelFormat = "0.01"
-  )
-  (sankeyPlot)
-}
+  # p = filter(p, source != target)
+  ####### first build igraph
+  edgeslist=(p[,c("source", "target")])
+  edgeslist=  as.vector(as.character(as.matrix(t(edgeslist))))
+  g <- graph(edgeslist)
+  E(g)$weight <- p$value
+  
+  ####### then convert it to networkd3 graph
+  wc <- cluster_walktrap(g)
+  members <- membership(wc)
+  # Convert to object suitable for networkD3
+  g_d3 <- igraph_to_networkD3(g, group = members)
+  #--- plot as force directed net
+  forceNetwork(Links = g_d3$links, Nodes = g_d3$nodes,
+               Source = 'source', Target = 'target', NodeID = 'name',Value='value',
+               Group = 'group',opacity = 1, bounded = TRUE, zoom=T,
+               # linkWidth = networkD3::JS("function(d) {  return Math.sqrt(d.value)*2; }"),
+               opacityNoHover =10, fontSize = 12 )
+}   
 
 # ========================== individuals platform usage =====================================
 
