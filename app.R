@@ -24,37 +24,44 @@ ui <- dashboardPage(header, sidebar, body)
 server <- function(input, output) {
     #  dropdowns for profession list 
       professions_list_fromDB= reactive({ c('all',dbGetQuery(con, "select distinct(name) from professions ORDER BY name"))  })
+      
       output$activityProf_dropdown = renderUI({selectInput("activityProf","Professions", professions_list_fromDB()) })
       output$activityProfpost_dropdown = renderUI({selectInput("activityProfpost","Professions", professions_list_fromDB()) })
       output$activityProfUnique_dropdown = renderUI({selectInput("activityProfUnique","Professions", professions_list_fromDB()) })
       output$userClustProf_dropdown = renderUI({selectInput("userClustProf","Professions", professions_list_fromDB()) })
       output$socialProf_dropdown = renderUI({selectInput("socialProf","Professions", professions_list_fromDB()) })
+      
     #---- dropdowns for school names
       schools_list_fromDB_sql= reactive({ c('all',dbGetQuery(con, "select distinct(name) from schools ORDER BY name"))  })
+      output$activitySchool_dropdown = renderUI({selectInput("activitySchool","Schools", schools_list_fromDB_sql()) })
+      output$activitySchoolpost_dropdown= renderUI({selectInput("activitySchoolpost","Schools", schools_list_fromDB_sql()) })
+      output$activitySchoolUnique_dropdown= renderUI({selectInput("activitySchoolUnique","Schools", schools_list_fromDB_sql()) })
+      output$userClustSchool_dropdown= renderUI({selectInput("userClustSchool","Schools", schools_list_fromDB_sql()) })
+      output$socialSchool_dropdown= renderUI({selectInput("socialSchool","Schools", schools_list_fromDB_sql()) })
       
     #----
       professionq = function(x) { paste0("p.name LIKE '",x ,"'") }
       schoolq = function(x) { paste0("s.name LIKE '",x ,"'") }
       localeq = function(x) { paste0("u.locale LIKE '", x, "'") }
-      uroleq = function(x) { paste0("u.role_id LIKE '", x, "'") }
+      uroleq  = function(x) { paste0("u.role_id LIKE '", x, "'") }
     
-    users_sub = function(lang, role, prof){    
+    users_sub = function(lang, role, prof,school){    
       conditions = c(
         (if (lang != 'all') localeq(lang) else NULL),
         (if (role != 'all') uroleq(role) else NULL),
-        (if (prof != 'all') professionq(prof) else NULL)
-        # (if (school != 'all') schoolq(school) else NULL)
+        (if (prof != 'all') professionq(prof) else NULL),
+        (if (school != 'all') schoolq(school) else NULL)
       )
       conditions = paste(conditions, collapse=' AND ')
       conditions = if(nchar(conditions) > 0) paste0("WHERE ", conditions) else ''
-      paste('WITH users_sub as (select u.*, p.name from users u LEFT JOIN professions p ON u.profession_id = p._id ', conditions,  ")", sep=" ")
+      paste('WITH users_sub as (select u.*, p.name, s.name from users u LEFT JOIN professions p ON u.profession_id = p._id LEFT JOIN schools s on u.school_id=s._id ', conditions,  ")", sep=" ")
     }
     
     #----------------------- tab: activity ----------------------------
     # ----all activity over time  
     
     activitySql = reactive({    
-      paste(users_sub(input$activityLang, input$userRole, input$activityProf), "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner_m a RIGHT JOIN users_sub u ON a.user_id = u._id GROUP BY date::date")
+      paste(users_sub(input$activityLang, input$userRole, input$activityProf, input$activitySchool), "SELECT a.date::DATE, count(a.*) AS n FROM user_activity_logs_cleaner_m a RIGHT JOIN users_sub u ON a.user_id = u._id GROUP BY date::date")
     })
     output$activitySql = reactive({ activitySql() })
     activityData = reactive({pall = dbGetQuery(con, activitySql())
@@ -80,7 +87,7 @@ server <- function(input, output) {
     # ---------------  new postsover time
     postsql = reactive({ 
       typeq = if(input$postType != 'all') paste0(" WHERE p.deleted = FALSE AND (LD.deleted IS NULL OR LD.deleted = TRUE) AND p.post_type LIKE '", input$postType, "'") else ""
-      paste(users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost),
+      paste(users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost, input$activitySchoolpost),
             "select p.CREATED_AT::date as n, count(p.*) FROM posts p INNER JOIN users_sub u on u._id = p.owner_id LEFT JOIN learning_doc_entries LD on LD._id = p.ld_id ", typeq, " GROUP BY p.created_at::date", sep=' ')
     })
     output$postsql = reactive({ postsql() })
@@ -98,7 +105,7 @@ server <- function(input, output) {
     #---------- 1. weekly unique users
     uniqueUsersSql = reactive({
       paste0(
-        users_sub(input$activityLangUnique, input$userRoleUnique, input$activityProfUnique),
+        users_sub(input$activityLangUnique, input$userRoleUnique, input$activityProfUnique, input$activitySchoolUnique),
         ", b AS (SELECT a.user_id, date_trunc('",
         input$uniqueUsersGran,
         "', a.DATE) AS DATE FROM user_activity_logs_cleaner_m a INNER JOIN users_sub u on u._id = a.user_id )
@@ -119,7 +126,7 @@ server <- function(input, output) {
     cumulUsersSql = reactive({
       a = input$uniqueUsersPlot_date_window  
       paste0(
-        users_sub(input$activityLangUnique, input$userRoleUnique, input$activityProfUnique),
+        users_sub(input$activityLangUnique, input$userRoleUnique, input$activityProfUnique, input$activitySchoolUnique),
         "SELECT created_at::DATE as date from users_sub WHERE created_at::DATE > '",a[[1]],"' AND created_at::DATE < '", a[[2]], 
         "' ORDER BY DATE"
       )
@@ -138,7 +145,7 @@ server <- function(input, output) {
     postsUsersSql = reactive({ 
       typeq = if(input$postType != 'all') paste0(" WHERE p.post_type LIKE '", input$postType, "' AND ") else " WHERE "
       a = input$rollerPost_date_window  
-      ret = paste0(users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost),
+      ret = paste0(users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost, input$activitySchoolpost),
                    " select count(p.*) as n FROM posts p INNER JOIN users_sub u on u._id = p.owner_id LEFT JOIN learning_doc_entries LD on LD._id = p.ld_id ", typeq, 
                    " p.deleted = FALSE AND (LD.deleted IS NULL or LD.deleted = FALSE) AND p.created_at::DATE > '",a[[1]],"' AND p.created_at::DATE < '", a[[2]],"' GROUP BY u._id")
       return(ret)
@@ -159,7 +166,7 @@ server <- function(input, output) {
     usersPostSequenceSql = reactive({ 
       typeq = if(input$postType != 'all') paste0(" WHERE p.post_type LIKE '", input$postType, "' AND ") else " WHERE "
       a = input$rollerPost_date_window  
-      ret = paste0("WITH u_week_post as ( WITH u_week_post_count as (", users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost),
+      ret = paste0("WITH u_week_post as ( WITH u_week_post_count as (", users_sub(input$activityLangpost, input$userRolepost, input$activityProfpost, input$activitySchoolpost),
                    " select date_trunc('",input$posSeq_time_window,"',p.CREATED_AT) as time, p.owner_id, p.post_type, count(p.*)
                    FROM posts p INNER JOIN users_sub u on u._id = p.owner_id LEFT JOIN learning_doc_entries LD on LD._id = p.ld_id ", typeq, 
                    " p.post_type NOT LIKE 'learningJournal' AND p.deleted = FALSE AND (LD.deleted IS NULL or LD.deleted = FALSE) AND p.created_at::DATE > '",a[[1]],"' AND p.created_at::DATE < '", a[[2]],
@@ -201,7 +208,7 @@ server <- function(input, output) {
     FULL JOIN LDPostCnt ldp ON u._id = ldp.uid   FULL JOIN ActivitySub asp ON u._id = asp.uid   FULL JOIN Activity act ON u._id = act.uid 
     FULL JOIN commentsCnt cmn ON u._id = cmn.uid   GROUP BY u._id,u._id,u.first_name, u.last_name;;"
    
-     mostActiveUsersSql =reactive({ paste( users_sub('all','all','all'),posts_comment_lds_query)})
+     mostActiveUsersSql =reactive({ paste( users_sub('all','all','all','all'),posts_comment_lds_query)})
     output$mostActiveUsersSql = reactive({ mostActiveUsersSql()})
     mostactiveUData = reactive({    p=dbGetQuery(con, mostActiveUsersSql());  p=filter(p, !is.na(first_name))})
     # columns are:
@@ -219,7 +226,7 @@ server <- function(input, output) {
     
     #----------------------- tab: platform usage clusters ----------------------------
     #--------------------- clusters of platform usagegb
-    UsersclusterSql =reactive({ paste( users_sub(input$userClustLang, input$userClustRole, input$userClustProf),
+    UsersclusterSql =reactive({ paste( users_sub(input$userClustLang, input$userClustRole, input$userClustProf, input$userClustSchool),
                                        posts_comment_lds_query)})
     output$UsersclusterSql = reactive({ UsersclusterSql()})
     UsersclusterData = reactive({    p=dbGetQuery(con, UsersclusterSql());  p=filter(p, !is.na(first_name))})
@@ -250,7 +257,7 @@ server <- function(input, output) {
     
     #--------------------- tab:  social network -----------------------
     socialNetSql =reactive({ paste(
-      users_sub(input$socialLang, 'all', input$socialProf),
+      users_sub(input$socialLang, 'all', input$socialProf, input$socialSchool),
       ",links as(select  a.owner_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'comment' AS link_type
       from post_comments a LEFT JOIN posts b on a.post_id=b._id
       UNION ALL

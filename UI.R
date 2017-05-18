@@ -60,7 +60,8 @@ body <- dashboardBody(tabItems(
              uiOutput('activityProf_dropdown'),
              # selectInput("activityProf", "Professions", professionsList),
              selectInput( "activityLang",   "Languages",languageList),
-             selectInput( "userRole",  "User role",     roleList    )
+             selectInput( "userRole",  "User role",     roleList    ),
+             uiOutput('activitySchool_dropdown')
            ),
            htmlOutput("activitySql")
   ),
@@ -75,7 +76,8 @@ body <- dashboardBody(tabItems(
                 # selectInput("activityProfpost","Professions",professionsList  ),
                 selectInput( "activityLangpost","Languages", languageList),
                 selectInput("userRolepost","User role",roleList),
-                selectInput( "postType", "Post type", postTypeList)   
+                selectInput( "postType", "Post type", postTypeList),
+                uiOutput('activitySchoolpost_dropdown')
               ),
               h3('Sequence of post Types by each individual user'),
               h5('Each rows represents one user, columns represent weeks/month, colors encode type of activity'),
@@ -100,7 +102,9 @@ body <- dashboardBody(tabItems(
                 uiOutput('activityProfUnique_dropdown'),
                 # selectInput("activityProfUnique", "Professions",professionsList  ),
                 selectInput("activityLangUnique","Languages", languageList ),
-                selectInput( "userRoleUnique","User role",roleList)
+                selectInput( "userRoleUnique","User role",roleList),
+                uiOutput('activitySchoolUnique_dropdown')
+                
               ),
               h3('Cumulative registered users'),
               plotOutput("cumulUsersPlot")
@@ -126,7 +130,9 @@ body <- dashboardBody(tabItems(
             uiOutput('userClustProf_dropdown'),
             # selectInput("userClustProf", "Professions",professionsList  ),
             selectInput("userClustLang","Languages", languageList ),
-            selectInput( "userClustRole","User role",roleList)  
+            selectInput( "userClustRole","User role",roleList),
+            uiOutput('userClustSchool_dropdown')
+            
           ),
           plotOutput("usageBarPlot"),
           DT::dataTableOutput("usageTable"),
@@ -148,7 +154,9 @@ body <- dashboardBody(tabItems(
             selectInput( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
             uiOutput('socialProf_dropdown'),
             # selectInput("socialProf", "Professions",professionsList  ),
-            selectInput("socialLang","Languages", languageList )
+            selectInput("socialLang","Languages", languageList ),
+            uiOutput('socialSchool_dropdown')
+            
           ),
           #-----sankey
           h3("Strongest connections"),
