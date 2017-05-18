@@ -1,24 +1,15 @@
-## app.R ##
+#----- load libraries
+list.of.packages <- c("shiny","shinydashboard","magrittr","RPostgreSQL","ggplot2","dygraphs","xts",
+                      "DT","dplyr","scales","reshape2","googleVis","reshape","cluster",
+                      "igraph", "networkD3", "rCharts") 
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages) 
+lapply(list.of.packages, require, character.only=T)
+
 # devtools::install_github(c("ramnathv/htmlwidgets", "rstudio/dygraphs"))
-# install_github ('ramnathv/rCharts')
+# devtools::install_github ('ramnathv/rCharts')
 # install_github("dgrapov/networkly")
-library(shiny)
-library(shinydashboard)
-library(magrittr)
-library(RPostgreSQL)
-library(ggplot2)
-library(dygraphs)
-library(xts)
-library(DT)
-library(dplyr)
-library(scales)
-library(reshape2)
-library(googleVis)
-library(reshape)
-library(cluster)
-library(igraph)
-library(networkD3) # social net and sankey
-# library(rCharts) # for sankey diagram
+# devtools::install_github("igraph/rigraph")
 
 source("./eventcount.R")
 source("./password.R")
@@ -26,8 +17,8 @@ source("./preparePlots.R")
 
 drv <- dbDriver("PostgreSQL")
 con <- dbConnect(    drv,     host = "icchilisrv1.epfl.ch",           user = "shiny",    dbname = "realto",    password = password  )
-
 source("./UI.R")
+
 ui <- dashboardPage(header, sidebar, body)
 ########################################## server #################################
 server <- function(input, output) {
