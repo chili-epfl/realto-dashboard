@@ -57,8 +57,8 @@ body <- dashboardBody(tabItems(
            dygraphOutput("rollerActivities"),
            flowLayout(
              sliderInput("rollPeriod", "Smoothing:", 1, 100, 1),
-             # selectInput("activityProf",    "Professions",      professionsList  ),
-             selectInput("activityProf", label = "Professions", choices =professionsList),
+             uiOutput('activityProf_dropdown'),
+             # selectInput("activityProf", "Professions", professionsList),
              selectInput( "activityLang",   "Languages",languageList),
              selectInput( "userRole",  "User role",     roleList    )
            ),
@@ -71,10 +71,12 @@ body <- dashboardBody(tabItems(
               dygraphOutput("rollerPost"),
               flowLayout(
                 sliderInput("rollPeriodpost", "Smoothing:", 1, 100, 1),
-                selectInput("activityProfpost","Professions",professionsList  ),
+                uiOutput('activityProfpost_dropdown'),
+                # selectInput("activityProfpost","Professions",professionsList  ),
                 selectInput( "activityLangpost","Languages", languageList),
                 selectInput("userRolepost","User role",roleList),
-                selectInput( "postType", "Post type", postTypeList)    ),
+                selectInput( "postType", "Post type", postTypeList)   
+              ),
               h3('Sequence of post Types by each individual user'),
               h5('Each rows represents one user, columns represent weeks/month, colors encode type of activity'),
               selectInput(   "posSeq_time_window",     "Time window:", c( "Week" = "week",  "Month" = "month")  ),
@@ -95,7 +97,8 @@ body <- dashboardBody(tabItems(
               flowLayout(
                 sliderInput("uniqueUsersSmoothing", "Smoothing:", 1, 100, 1),
                 selectInput( "uniqueUsersGran", "Unique users per:",   c("Day" = "day",  "Week" = "week",    "Month" = "month" )  ),
-                selectInput("activityProfUnique", "Professions",professionsList  ),
+                uiOutput('activityProfUnique_dropdown'),
+                # selectInput("activityProfUnique", "Professions",professionsList  ),
                 selectInput("activityLangUnique","Languages", languageList ),
                 selectInput( "userRoleUnique","User role",roleList)
               ),
@@ -120,7 +123,8 @@ body <- dashboardBody(tabItems(
           flowLayout(
             sliderInput("users_clust_cnt:","Nubmer of clusters", 1, 9, 1),
             checkboxInput("NormalizeVals", 'Normalize values', value = FALSE, width = NULL),
-            selectInput("userClustProf", "Professions",professionsList  ),
+            uiOutput('userClustProf_dropdown'),
+            # selectInput("userClustProf", "Professions",professionsList  ),
             selectInput("userClustLang","Languages", languageList ),
             selectInput( "userClustRole","User role",roleList)  
           ),
@@ -142,7 +146,8 @@ body <- dashboardBody(tabItems(
           #---- options
           flowLayout(
             selectInput( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
-            selectInput("socialProf", "Professions",professionsList  ),
+            uiOutput('socialProf_dropdown'),
+            # selectInput("socialProf", "Professions",professionsList  ),
             selectInput("socialLang","Languages", languageList )
           ),
           #-----sankey
