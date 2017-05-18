@@ -57,9 +57,11 @@ body <- dashboardBody(tabItems(
            dygraphOutput("rollerActivities"),
            flowLayout(
              sliderInput("rollPeriod", "Smoothing:", 1, 100, 1),
-             radioButtons("activityProf",    "Professions",      professionsList  ),
-             radioButtons( "activityLang",   "Languages",languageList),
-             radioButtons( "userRole",  "User role",     roleList    )
+             uiOutput('activityProf_dropdown'),
+             # selectInput("activityProf", "Professions", professionsList),
+             selectInput( "activityLang",   "Languages",languageList),
+             selectInput( "userRole",  "User role",     roleList    ),
+             uiOutput('activitySchool_dropdown')
            ),
            htmlOutput("activitySql")
   ),
@@ -70,13 +72,16 @@ body <- dashboardBody(tabItems(
               dygraphOutput("rollerPost"),
               flowLayout(
                 sliderInput("rollPeriodpost", "Smoothing:", 1, 100, 1),
-                radioButtons("activityProfpost","Professions",professionsList  ),
-                radioButtons( "activityLangpost","Languages", languageList),
-                radioButtons("userRolepost","User role",roleList),
-                radioButtons( "postType", "Post type", postTypeList)    ),
+                uiOutput('activityProfpost_dropdown'),
+                # selectInput("activityProfpost","Professions",professionsList  ),
+                selectInput( "activityLangpost","Languages", languageList),
+                selectInput("userRolepost","User role",roleList),
+                selectInput( "postType", "Post type", postTypeList),
+                uiOutput('activitySchoolpost_dropdown')
+              ),
               h3('Sequence of post Types by each individual user'),
               h5('Each rows represents one user, columns represent weeks/month, colors encode type of activity'),
-              radioButtons(   "posSeq_time_window",     "Time window:", c( "Week" = "week",  "Month" = "month")  ),
+              selectInput(   "posSeq_time_window",     "Time window:", c( "Week" = "week",  "Month" = "month")  ),
               plotOutput("usersPostSequencePlot"),
               h3('Users and posts distribution'),
               plotOutput("postUsers"),
@@ -93,10 +98,13 @@ body <- dashboardBody(tabItems(
               dygraphOutput("uniqueUsersPlot"),
               flowLayout(
                 sliderInput("uniqueUsersSmoothing", "Smoothing:", 1, 100, 1),
-                radioButtons( "uniqueUsersGran", "Unique users per:",   c("Day" = "day",  "Week" = "week",    "Month" = "month" )  ),
-                radioButtons("activityProfUnique", "Professions",professionsList  ),
-                radioButtons("activityLangUnique","Languages", languageList ),
-                radioButtons( "userRoleUnique","User role",roleList)
+                selectInput( "uniqueUsersGran", "Unique users per:",   c("Day" = "day",  "Week" = "week",    "Month" = "month" )  ),
+                uiOutput('activityProfUnique_dropdown'),
+                # selectInput("activityProfUnique", "Professions",professionsList  ),
+                selectInput("activityLangUnique","Languages", languageList ),
+                selectInput( "userRoleUnique","User role",roleList),
+                uiOutput('activitySchoolUnique_dropdown')
+                
               ),
               h3('Cumulative registered users'),
               plotOutput("cumulUsersPlot")
@@ -119,9 +127,12 @@ body <- dashboardBody(tabItems(
           flowLayout(
             sliderInput("users_clust_cnt:","Nubmer of clusters", 1, 9, 1),
             checkboxInput("NormalizeVals", 'Normalize values', value = FALSE, width = NULL),
-            radioButtons("userClustProf", "Professions",professionsList  ),
-            radioButtons("userClustLang","Languages", languageList ),
-            radioButtons( "userClustRole","User role",roleList)  
+            uiOutput('userClustProf_dropdown'),
+            # selectInput("userClustProf", "Professions",professionsList  ),
+            selectInput("userClustLang","Languages", languageList ),
+            selectInput( "userClustRole","User role",roleList),
+            uiOutput('userClustSchool_dropdown')
+            
           ),
           plotOutput("usageBarPlot"),
           DT::dataTableOutput("usageTable"),
@@ -140,10 +151,12 @@ body <- dashboardBody(tabItems(
           forceNetworkOutput("socialNetPlot_force"),
           #---- options
           flowLayout(
-            # sliderInput("social_num_link:","Nubmer of connections", 2, 300, 30),
-            radioButtons( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
-            radioButtons("socialProf", "Professions",professionsList  ),
-            radioButtons("socialLang","Languages", languageList )
+            selectInput( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
+            uiOutput('socialProf_dropdown'),
+            # selectInput("socialProf", "Professions",professionsList  ),
+            selectInput("socialLang","Languages", languageList ),
+            uiOutput('socialSchool_dropdown')
+            
           ),
           #-----sankey
           h3("Strongest connections"),
