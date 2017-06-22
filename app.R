@@ -333,7 +333,11 @@ server <- function(input, output) {
       p = regularityUsersActionsData()
       getRegularity_peakWeekDay(p)
     })
-   
+    #----- peak on day hour
+    output$PDH_reg_DailyHistPlot= renderPlot({
+      p = regularityUsersActionsData()
+      getRegularity_peakDayHour(p)
+    })
     #----- sql for activity 
     
     

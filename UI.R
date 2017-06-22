@@ -177,8 +177,10 @@ body <- dashboardBody(tabItems(
           h3("Regularity: Weekly Similarity Binary (WSB)"),
           plotOutput("WSB_reg_WeeklyProfilePlot", width = "100%", height= "500px"),
           h3("Regularity:  Peak on Week Day (PWD)"),
-          plotOutput("PWD_reg_WeeklyHistPlot", width = "100%", height= "500px"),
+          plotOutput("PWD_reg_WeeklyHistPlot", width = "100%", height= "700px"),
           
+          h3("Regularity:  Peak on Day Hour (PDH)"),
+          plotOutput("PDH_reg_DailyHistPlot", width = "100%", height= "700px"),
           
           # DT::dataTableOutput("flows_Names_members_table"),
           #------- sql query
