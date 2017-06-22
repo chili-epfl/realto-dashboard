@@ -144,7 +144,14 @@ getUsageClusterPlot<-  function(p, input) {
 }
 
 #============================Regularity================================================
-  # *********************** 1. WSB *************
+  #------- BINARY similarity -------------
+  binarydSimilarity= function(a, b) {
+    ab= a*b
+    maxWorkDays= max(length(a[a>0]) , length(b[b>0]))
+    sim=length(ab[ab>0])/maxWorkDays
+    return (round(sim,2))
+  }
+# *********************** 1. WSB *************
     getRegularity_WSB= function(events) {
       #------- prepare events file
       events$weekofyear=(events$year - min(events$year))*53+events$weekofyear
@@ -233,6 +240,7 @@ getUsageClusterPlot<-  function(p, input) {
       return(sum(-v * log(v)))
         }
     getRegularity_peakWeekDay= function(events) {
+      daylabels=c('Mon','Tue', 'Wed','Thu','Fri','Sat','Sun')
       #------- prepare events file
       # events$weekofyear=(events$year - min(events$year))*53+events$weekofyear
       # events$weekofyear=events$weekofyear- min(events$weekofyear)

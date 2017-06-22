@@ -174,7 +174,7 @@ body <- dashboardBody(tabItems(
           flowLayout(
             uiOutput('regularity_flow_dropdown')
           ),
-          h3("Regularity Weekly Similarity Binary (WSB)"),
+          h3("Regularity: Weekly Similarity Binary (WSB)"),
           plotOutput("WSB_reg_WeeklyProfilePlot", width = "100%", height= "500px"),
           h3("Regularity:  Peak on Week Day (PWD)"),
           plotOutput("PWD_reg_WeeklyHistPlot", width = "100%", height= "500px"),
