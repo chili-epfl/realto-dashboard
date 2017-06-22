@@ -47,12 +47,13 @@ sidebar <- dashboardSidebar(sidebarMenu(
   menuItem("Posts and Users/posts", tabName = "posts", icon = icon("th")),
   menuItem("Users clusters", tabName = "Usersclusters", icon = icon("th")),
   menuItem("Social Network", tabName = "SocialNetwork", icon = icon("th")),
+  menuItem("Regularity", tabName = "Regularity", icon = icon("th")),
   menuItem("REALTO", icon = icon("file-code-o"), href = "https://www.realto.ch")
 ))
 
 
 body <- dashboardBody(tabItems(
-  #----------------------- tab: activity ----------------------------
+   #============================================= tab: activity #=============================================
   tabItem( tabName = "activity",
            dygraphOutput("rollerActivities"),
            flowLayout(
@@ -66,7 +67,7 @@ body <- dashboardBody(tabItems(
            htmlOutput("activitySql")
   ),
   
-  #----------------------- tab: posts ----------------------------
+   #============================================= tab: posts #=============================================
   tabItem(    tabName = "posts",
               h3('Number of posts over time'),
               dygraphOutput("rollerPost"),
@@ -91,7 +92,7 @@ body <- dashboardBody(tabItems(
               textOutput("usersPostSequenceSql")
   ),
   
-  #----------------------- tab:  uniqueUsers ----------------------------
+   #============================================= tab:  uniqueUsers #=============================================
   tabItem(  tabName = "uniqueUsers",
             fluidRow(
               h3('Unique users/timeframe'),
@@ -113,13 +114,13 @@ body <- dashboardBody(tabItems(
             htmlOutput("uniqueSql"),
             htmlOutput("cumulUsersSql")
   ),
-  #----------------------- tab:  most Active users ----------------------------
+   #============================================= tab:  most Active users #=============================================
   tabItem(tabName = "mostActiveUsers",
           DT::dataTableOutput("mostActiveTable"),
           htmlOutput("mostActiveUsersSql")
   ),
   
-  #----------------------- tab: platform usage clusters ----------------------------
+   #============================================= tab: platform usage clusters #=============================================
   tabItem(tabName = "Usersclusters",
           h3("Clusters of users based on their platform usage"),
           h5("Use slider below the chart to change the number of clustes."),
@@ -139,12 +140,12 @@ body <- dashboardBody(tabItems(
           htmlOutput("UsersclusterSql")
   ),
   
-  #----------------------- tab:  most Active flows ----------------------------
+   #============================================= tab:  most Active flows #=============================================
   tabItem(tabName = "flows",
           DT::dataTableOutput("flowsTable"),
           htmlOutput("flowSql")
   ),
-  #----------------------- tab:  Social network ----------------------------
+   #============================================= tab:  Social network #=============================================
   tabItem(tabName = "SocialNetwork",
           h3("Social network of users"),
           #-----force net
@@ -166,5 +167,23 @@ body <- dashboardBody(tabItems(
           # showOutput('socialNetPlot_sankey2', 'd3_sankey'),
           #------- sql query
           htmlOutput("socialNetSql")
+  ),
+   #============================================= tab:  Regularity #=============================================
+  tabItem(tabName = "Regularity",
+          #---- options
+          flowLayout(
+            uiOutput('regularity_flow_dropdown')
+          ),
+          h3("Regularity Weekly Similarity Binary (WSB)"),
+          plotOutput("WSB_reg_WeeklyProfilePlot", width = "100%", height= "500px"),
+          h3("Regularity:  Peak on Week Day (PWD)"),
+          plotOutput("PWD_reg_WeeklyHistPlot", width = "100%", height= "500px"),
+          
+          
+          # DT::dataTableOutput("flows_Names_members_table"),
+          #------- sql query
+          h3(""),
+          htmlOutput("regularityUsersActions_Sql")
+          
   )
 ))
