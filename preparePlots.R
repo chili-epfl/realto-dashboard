@@ -212,8 +212,8 @@ getUsageClusterPlot<-  function(p, input) {
       boxplot_wsb_flow=ggplot(apprentices_reg, aes(x='WSB', y=WSB_2))+geom_boxplot(fill='springgreen4',alpha=0.7)+theme_bw()+
         scale_y_continuous(name = "Weekly Similarity Binary (WSB)",limits=c(0, 1))+
         labs(x ="", y = "WSB", title= paste0('Flow overview \n m=',m, '   sd=', sd))+
-        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),plot.title = element_text(hjust = 0.5),
-              panel.grid.minor = element_blank())
+        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+              plot.title = element_text(hjust = 0.5),panel.grid.minor = element_blank())
       
       #------- 5 plot weeks profile
       maxVal=max(user_week_day$Study.time)
@@ -276,24 +276,22 @@ getUsageClusterPlot<-  function(p, input) {
       weeklyHistogramPlots=
         ggplot(data=user_weekday_count, aes(x=dyofweek,y=countOfWeeks))+theme_bw()+
         geom_bar(stat="identity",fill='blue')+
-        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
-              strip.background = element_rect( fill='papayawhip'),panel.grid.minor = element_blank())+
         # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
         scale_x_continuous(breaks=seq(1,7,1), labels = daylabels)+
         labs(title="Weekly histogram of each apprentice and teacher",   x ="Week day", y = "Count of weeks",  title= 'Weekly histograms and PWD regularity') +
-        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+        theme(text = element_text(size=13), axis.text.x = element_text(angle = 0, hjust = 0.5),
+              strip.background = element_rect( fill='papayawhip'),
               panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
         facet_wrap(~paste(role_id, ': ',fullname )+paste('  PWD:', PWD ), ncol=4)
-      ######### weekly histograms and PDH apps vs tacher
+      ######### accumulated weekly histograms and PDH apps vs tacher
       weeklyHistogramAppsandTeacher=
         ggplot(data=user_weekday_count, aes(x=dyofweek,y=countOfWeeks))+theme_bw()+
         geom_bar(stat="identity",fill='blue')+
-        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
-              strip.background = element_rect( fill='papayawhip'),panel.grid.minor = element_blank())+
         # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
         scale_x_continuous(breaks=seq(1,7,1), labels = daylabels)+
-        labs(title="Acuumulated weekly histogram of all apprentice and teacher",   x ="Week day", y = "Count of weeks",  title= 'Weekly histograms and PWD regularity') +
+        labs(title="Acuumulated weekly histogram of all apprentices and teacher",   x ="Week day", y = "Count of weeks",  title= 'Weekly histograms and PWD regularity') +
         theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+              strip.background = element_rect( fill='papayawhip'),
               panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
         facet_wrap(~paste(role_id), scales = "free",ncol=4)
       
@@ -341,31 +339,29 @@ getUsageClusterPlot<-  function(p, input) {
         ggplot(apprentices_reg, aes(x='PDH', y=PDH))+geom_boxplot(fill='springgreen4',alpha=0.7)+theme_bw()+
         scale_y_continuous(name = "Peak on Day Hour (PDH)")+
         labs(x ="", y = "PDH", title= paste0('Flow overview \n m=',m, '   sd=', sd))+
-        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+        theme(text = element_text(size=12), axis.text.x = element_text(angle = 0, hjust = 0.5),
               plot.title = element_text(hjust = 0.5),  panel.grid.minor = element_blank())      
       ######### daily histograms and PDH for each user
       dailyHistogramPlots=
         ggplot(data=user_dayhour_count, aes(x=hourofday,y=countOfDays))+theme_bw()+
         geom_bar(stat="identity",fill='blue')+
-        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
-              strip.background = element_rect( fill='papayawhip'),panel.grid.minor = element_blank())+
         # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
-        scale_x_continuous(breaks=seq(1,24,1), labels = c(1:24))+
+        scale_x_continuous(breaks=seq(1,24,3), labels = seq(1,24,3))+
         labs(title="Daily histogram of each apprentice and teacher",   x="Day hour", y = "Count of days" ,  title= 'Weekly histograms and PWD regularity') +
-        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+        theme(text = element_text(size=13), axis.text.x = element_text(angle = 0, hjust = 0.5),
+              strip.background = element_rect( fill='papayawhip'),
               panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
         facet_wrap(~paste(role_id, ': ',fullname )+paste('  PDH:', PDH ), ncol=4)
       
-      ######### daily histograms and PDH apps vs tacher
+      ######### accumulated daily histograms and PDH apps vs tacher
       dailyHistogramAppsandTeacher=
         ggplot(data=user_dayhour_count, aes(x=hourofday,y=countOfDays))+theme_bw()+
         geom_bar(stat="identity",fill='blue')+
-        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
-              strip.background = element_rect( fill='papayawhip'),panel.grid.minor = element_blank())+
         # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
         scale_x_continuous(breaks=seq(1,24,1), labels = c(1:24))+
         labs(title="Acuumulated daily histogram of all apprentices, and teacher",   x="Day hour", y = "Count of days" ,  title= 'Weekly histograms and PWD regularity') +
         theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+              strip.background = element_rect( fill='papayawhip'),
               panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
         facet_wrap(~paste(role_id),scales = "free", ncol=4)
       #------ merge plots --------
