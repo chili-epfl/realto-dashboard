@@ -157,7 +157,7 @@ getUsageClusterPlot<-  function(p, input) {
       events$weekofyear=(events$year - min(events$year))*53+events$weekofyear
       events$weekofyear=events$weekofyear- min(events$weekofyear)
       # events$fullname=paste(events$first_name, events$last_name)
-      events$fullname=paste(substr(events$first_name,1,1), '. ', substr(events$last_name,1,1),'. ')
+      events$fullname=paste(substr(events$first_name,1,2), '. ', substr(events$last_name,1,1),'. ')
       
       # a=ddply(events, .(user_id,first_name,last_name,role_id,weekofyear), summarize, cnt=length(date))
       # hist(a$weekofyear, breaks=max(a$weekofyear))
@@ -247,7 +247,7 @@ getUsageClusterPlot<-  function(p, input) {
       events$weekofyear=(events$year - min(events$year))*53+events$weekofyear
       events$weekofyear=events$weekofyear- min(events$weekofyear)
 #       events$fullname=paste(events$first_name, events$last_name)
-      events$fullname=paste(substr(events$first_name,1,1), '. ', substr(events$last_name,1,1),'. ')
+      events$fullname=paste(substr(events$first_name,1,2), '. ', substr(events$last_name,1,1),'. ')
       
       #----------- weekly histograms -------------------
       user_weekday_count=ddply(events, .(user_id,fullname,role_id,dyofweek), summarize, countOfWeeks=length(unique(weekofyear)))
@@ -334,7 +334,7 @@ getUsageClusterPlot<-  function(p, input) {
       events$weekofyear=events$weekofyear- min(events$weekofyear)
       events$dayofyear=(events$year - min(events$year))*365+events$dayofyear
       # events$fullname=paste(events$first_name, events$last_name)
-      events$fullname=paste(substr(events$first_name,1,1), '. ', substr(events$last_name,1,1),'. ')
+      events$fullname=paste(substr(events$first_name,1,2), '. ', substr(events$last_name,1,1),'. ')
       
       #----------- daily histograms -------------------
       user_dayhour_count=ddply(events, .(user_id,fullname,role_id,hourofday), summarize, countOfDays=length(unique(dayofyear)))
