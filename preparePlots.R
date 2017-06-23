@@ -287,11 +287,8 @@ getUsageClusterPlot<-  function(p, input) {
               panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
         facet_wrap(~paste(role_id, ': ',fullname )+paste('  CWD:', CWD ), ncol=4)
       ######### average weekly histograms and CWD apps vs tacher
-      # average_weekDay_roles= ddply(user_weekday_count, .(role_id,dyofweek), summarise, avgcountOfWeeks=mean(countOfWeeks))
-     
-      roles_cnt= ddply(user_dayhour_count, .(role_id), summarize, role_cnt=length(unique(fullname)))
+      roles_cnt= ddply(user_weekday_count, .(role_id), summarize, role_cnt=length(unique(fullname)))
       average_weekDay_roles= ddply(user_weekday_count, .(role_id,dyofweek), summarise,sumcountOfWeeks=sum(countOfWeeks))
-      # average_dayhour_roles= ddply(user_dayhour_count, .(role_id,hourofday), summarise, sumCountOfDays=sum(countOfDays), avgCountOfDays=(sumCountOfDays))
       average_weekDay_roles=merge(average_weekDay_roles,roles_cnt)
       average_weekDay_roles$avgcountOfWeeks=average_weekDay_roles$sumcountOfWeeks/average_weekDay_roles$role_cnt
       
