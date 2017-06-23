@@ -232,7 +232,11 @@ getUsageClusterPlot<-  function(p, input) {
         labs(x ="Day", y = "Week", title='')+ facet_wrap(~paste(role_id, ': ',fullname )+paste('  WSB:', WSB_2 ), ncol=4)
       print(plot_profiles)
     
-      p=grid.arrange(plot_profiles,boxplot_wsb_flow, ncol=2, widths=c(80,20))
+      
+      # p=grid.arrange(plot_profiles,boxplot_wsb_flow, ncol=2, widths=c(80,20))
+      p=grid.arrange(plot_profiles,boxplot_wsb_flow,
+                     layout_matrix = rbind(c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2)))
+      
       return(p)
     }
   # *********************** 2. CWD: Certain Week day regularity *************
@@ -360,7 +364,7 @@ getUsageClusterPlot<-  function(p, input) {
         ggplot(apprentices_reg, aes(x='CDH', y=CDH))+geom_boxplot(fill='springgreen4',alpha=0.7)+theme_bw()+
         scale_y_continuous(name = "Certain Day Hour (CDH)")+
         labs(x ="", y = "CDH", title= paste0('Flow overview \n m=',m, '   sd=', sd))+
-        theme(text = element_text(size=12), axis.text.x = element_text(angle = 0, hjust = 0.5),
+        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
               plot.title = element_text(hjust = 0.5),  panel.grid.minor = element_blank())      
       ######### daily histograms and CDH for each user
       dailyHistogramPlots=
