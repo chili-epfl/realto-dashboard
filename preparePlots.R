@@ -212,8 +212,8 @@ getUsageClusterPlot<-  function(p, input) {
       
       m=round(mean(apprentices_reg$WSB_2),2); sd=round (sd((apprentices_reg$WSB_2)),2)
       boxplot_wsb_flow=ggplot(apprentices_reg, aes(x='WSB', y=WSB_2))+geom_boxplot(fill='springgreen4',alpha=0.7)+theme_bw()+
-        scale_y_continuous(name = "Weekly Similarity Binary (WSB)",limits=c(0, 1))+
-        labs(x ="", y = "WSB", title= paste0('Flow overview \n m=',m, '   sd=', sd))+
+        scale_y_continuous(name = "Weekly Similarity Binary (WSB)",limits=c(0, max(0.5,max(apprentices_reg$WSB_2))))+
+        labs(x ="", y = "WSB", title= paste0('Apprentices overview \n m=',m, '   sd=', sd))+
         theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
               plot.title = element_text(hjust = 0.5),panel.grid.minor = element_blank())
       
@@ -226,10 +226,10 @@ getUsageClusterPlot<-  function(p, input) {
         geom_tile(aes(fill = Study.time),colour = "red" )+
         scale_fill_gradient(limits=c(0,maxVal),low = "white",high = cellsCol, na.value = "dimgrey")+
         # scale_y_continuous(limits = c(0.5, 10.5), breaks=seq(1,weeksCount,1))+
-        scale_x_continuous(breaks=seq(1,7,1), labels = daylabels)+
+        scale_x_continuous(limits=c(0.5,7.5), breaks=seq(1,7,1), labels = daylabels)+
         theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5), 
               legend.position ="right",strip.background = element_rect( fill='papayawhip'),panel.grid.major =element_blank())+
-        labs(x ="Day", y = "Week", title='')+ facet_wrap(~paste(role_id, ': ',fullname )+paste('  WSB:', WSB_2 ), ncol=4)
+        labs(x ="Week day", y = "Week", title='')+ facet_wrap(~paste(role_id, ': ',fullname )+paste('  WSB:', WSB_2 ), ncol=4)
       print(plot_profiles)
     
       
@@ -284,7 +284,7 @@ getUsageClusterPlot<-  function(p, input) {
         ggplot(data=user_weekday_count, aes(x=dyofweek,y=countOfWeeks))+theme_bw()+
         geom_bar(stat="identity",fill='blue')+
         # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
-        scale_x_continuous(breaks=seq(1,7,1), labels = daylabels)+
+        scale_x_continuous(limits=c(0.5,7.5),breaks=seq(1,7,1), labels = daylabels)+
         labs(title="Individual weekly histograms",   x ="Week day", y = "Count of weeks",  title= 'Weekly histograms and CWD regularity') +
         theme(text = element_text(size=13), axis.text.x = element_text(angle = 0, hjust = 0.5),
               strip.background = element_rect( fill='papayawhip'),
@@ -296,33 +296,44 @@ getUsageClusterPlot<-  function(p, input) {
       average_weekDay_roles=merge(average_weekDay_roles,roles_cnt)
       average_weekDay_roles$avgcountOfWeeks=average_weekDay_roles$sumcountOfWeeks/average_weekDay_roles$role_cnt
       
-      weeklyHistogramAppsandTeacher=
-        ggplot(data=average_weekDay_roles, aes(x=dyofweek,y=avgcountOfWeeks))+theme_bw()+
-                geom_bar(stat="identity",fill='blue')+
-                # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
-                scale_x_continuous(breaks=seq(1,7,1), labels = daylabels)+
-                labs(title="Average weekly histograms",   x ="Week day", y = "Average count of weeks",  title= 'Weekly histograms and CWD regularity') +
-                theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
-                      strip.background = element_rect( fill='papayawhip'),
-                      panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
-                facet_wrap(~paste(role_id), scales = "free_y",ncol=4)
+      appsAverage =  
+        ggplot(data=filter(average_weekDay_roles,role_id=='apprentice'), aes(x=dyofweek,y=avgcountOfWeeks))+theme_bw()+
+        geom_bar(stat="identity",fill='blue')+
+        scale_x_continuous(limits=c(0.5,7.5),breaks=seq(1,7,1), labels = daylabels)+
+        labs(title="Average weekly histograms",   x ="Week day", y = "Average count of weeks",  title= 'Weekly histograms and CWD regularity') +
+        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+              strip.background = element_rect( fill='papayawhip'),
+              panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
+        facet_wrap(~paste(role_id), scales = "free_y",ncol=4)
+    
+    otherRolesAveage=
+        ggplot(data=filter(average_weekDay_roles,role_id!='apprentice'), aes(x=dyofweek,y=avgcountOfWeeks))+theme_bw()+
+        geom_bar(stat="identity",fill='blue')+
+        scale_x_continuous(limits=c(0.5,7.5),breaks=seq(1,7,1), labels = daylabels)+
+        labs(title="Average weekly histograms",   x ="Week day", y = "Average count of weeks",  title= 'Weekly histograms and CWD regularity') +
+        theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+              strip.background = element_rect( fill='papayawhip'),
+              panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
+        facet_wrap(~paste(role_id), scales = "free_y",ncol=4)
       
-      ######### accumulated weekly histograms and CWD apps vs tacher
-#       weeklyHistogramAppsandTeacher=
-#         ggplot(data=user_weekday_count, aes(x=dyofweek,y=countOfWeeks))+theme_bw()+
-#         geom_bar(stat="identity",fill='blue')+
-#         # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
-#         scale_x_continuous(breaks=seq(1,7,1), labels = daylabels)+
-#         labs(title="Accumulated weekly histograms",   x ="Week day", y = "Count of weeks",  title= 'Weekly histograms and CWD regularity') +
-#         theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
-#               strip.background = element_rect( fill='papayawhip'),
-#               panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
-#         facet_wrap(~paste(role_id), scales = "free_y",ncol=4)
+      
+#         weeklyHistogramAppsandTeacher= 
+#         ggplot(data=average_weekDay_roles, aes(x=dyofweek,y=avgcountOfWeeks))+theme_bw()+
+#                 geom_bar(stat="identity",fill='blue')+
+#                 # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
+#                 scale_x_continuous(limits=c(0.5,7.5),breaks=seq(1,7,1), labels = daylabels)+
+#                 labs(title="Average weekly histograms",   x ="Week day", y = "Average count of weeks",  title= 'Weekly histograms and CWD regularity') +
+#                 theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+#                       strip.background = element_rect( fill='papayawhip'),
+#                       panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
+#                 facet_wrap(~paste(role_id), scales = "free_y",ncol=4)
 #       
       #------ merge plots --------
-      p=grid.arrange(weeklyHistogramPlots,boxplot_CWD_flow, weeklyHistogramAppsandTeacher, 
-                     layout_matrix = rbind(c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2), c(3,3,3,3),c(3,3,3,3),c(3,3,3,3)))
-      
+      # p=grid.arrange(weeklyHistogramPlots,boxplot_CWD_flow, weeklyHistogramAppsandTeacher, 
+                     # layout_matrix = rbind(c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2), c(3,3,3,3),c(3,3,3,3),c(3,3,3,3)))
+    p=grid.arrange(weeklyHistogramPlots,boxplot_CWD_flow, appsAverage ,otherRolesAveage, 
+                   layout_matrix = rbind(c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2), c(3,3,4,4),c(3,3,4,4),c(3,3,4,4)))
+    
       return(p)
     }
     
@@ -363,7 +374,7 @@ getUsageClusterPlot<-  function(p, input) {
       boxplot_CDH_flow=
         ggplot(apprentices_reg, aes(x='CDH', y=CDH))+geom_boxplot(fill='springgreen4',alpha=0.7)+theme_bw()+
         scale_y_continuous(name = "Certain Day Hour (CDH)")+
-        labs(x ="", y = "CDH", title= paste0('Flow overview \n m=',m, '   sd=', sd))+
+        labs(x ="", y = "CDH", title= paste0('Apprentices overview \n m=',m, '   sd=', sd))+
         theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
               plot.title = element_text(hjust = 0.5),  panel.grid.minor = element_blank())      
       ######### daily histograms and CDH for each user
@@ -371,7 +382,7 @@ getUsageClusterPlot<-  function(p, input) {
         ggplot(data=user_dayhour_count, aes(x=hourofday,y=countOfDays))+theme_bw()+
         geom_bar(stat="identity",fill='blue')+
         # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
-        scale_x_continuous(breaks=seq(0,23,3), labels = seq(0,23,3))+
+        scale_x_continuous(limits=c(-0.5,23.5), breaks=seq(0,23,3), labels = seq(0,23,3))+
         labs(title="Individual daily histograms",   x="Day hour", y = "Count of days" ,  title= 'Weekly histograms and CWD regularity') +
         theme(text = element_text(size=13), axis.text.x = element_text(angle = 0, hjust = 0.5),
               strip.background = element_rect( fill='papayawhip'),
@@ -384,30 +395,45 @@ getUsageClusterPlot<-  function(p, input) {
       average_dayhour_roles= ddply(user_dayhour_count, .(role_id,hourofday), summarise, sumCountOfDays=sum(countOfDays), avgCountOfDays=(sumCountOfDays))
       average_dayhour_roles=merge(average_dayhour_roles,roles_cnt)
       average_dayhour_roles$avgCountOfDays=average_dayhour_roles$sumCountOfDays/average_dayhour_roles$role_cnt
-      
-      dailyHistogramAppsandTeacher=ggplot(data=average_dayhour_roles, aes(x=hourofday,y=avgCountOfDays))+theme_bw()+
+    
+      appsAverage=
+        ggplot(data=filter(average_dayhour_roles,role_id=='apprentice'), aes(x=hourofday,y=avgCountOfDays))+theme_bw()+
+              geom_bar(stat="identity",fill='blue')+
+              # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
+              scale_x_continuous(limits=c(-0.5,23.5), breaks=seq(0,23,1), labels = seq(0,23,1))+
+              labs(title="Average daily histogram",   x="Day hour", y = "Average count of days" ) +
+              theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+                    strip.background = element_rect( fill='papayawhip'),
+                    panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
+              facet_wrap(~paste(role_id),scales = ("free"), ncol=4)
+   otherRolesAveage =
+     ggplot(data=filter(average_dayhour_roles,role_id!='apprentice'), aes(x=hourofday,y=avgCountOfDays))+theme_bw()+
         geom_bar(stat="identity",fill='blue')+
         # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
-        scale_x_continuous(breaks=seq(0,23,1), labels = seq(0,23,1))+
+        scale_x_continuous(limits=c(-0.5,23.5), breaks=seq(0,23,1), labels = seq(0,23,1))+
         labs(title="Average daily histogram",   x="Day hour", y = "Average count of days" ) +
         theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
               strip.background = element_rect( fill='papayawhip'),
               panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
         facet_wrap(~paste(role_id),scales = ("free"), ncol=4)
       
-      ######### accumulated daily histograms and CDH apps vs tacher
-      #   dailyHistogramAppsandTeacher=
-      #     ggplot(data=user_dayhour_count, aes(x=hourofday,y=countOfDays))+theme_bw()+
-      #     geom_bar(stat="identity",fill='blue')+
-      #     # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
-      #     scale_x_continuous(breaks=seq(0,23,1), labels = seq(0,23,1))+
-      #     labs(title="Accumulated daily histograms",   x="Day hour", y = "Count of days" ,  title= 'Weekly histograms and CWD regularity') +
-      #     theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
-      #           strip.background = element_rect( fill='papayawhip'),
-      #           panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
-      #     facet_wrap(~paste(role_id),scales = ("free"), ncol=4)+ stat_summary(fun.y="mean")
+#       dailyHistogramAppsandTeacher=ggplot(data=average_dayhour_roles, aes(x=hourofday,y=avgCountOfDays))+theme_bw()+
+#         geom_bar(stat="identity",fill='blue')+
+#         # scale_y_continuous(limits = c(0, 10), breaks=seq(0,weeksCount,2))+
+#         scale_x_continuous(limits=c(-0.5,23.5), breaks=seq(0,23,1), labels = seq(0,23,1))+
+#         labs(title="Average daily histogram",   x="Day hour", y = "Average count of days" ) +
+#         theme(text = element_text(size=15), axis.text.x = element_text(angle = 0, hjust = 0.5),
+#               strip.background = element_rect( fill='papayawhip'),
+#               panel.grid.minor = element_blank(),plot.title = element_text(hjust = 0.5))+
+#         facet_wrap(~paste(role_id),scales = ("free"), ncol=4)
+#       
+     
       #------ merge plots --------
-      p=grid.arrange(dailyHistogramPlots,boxplot_CDH_flow, dailyHistogramAppsandTeacher, 
-                     layout_matrix = rbind(c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2), c(1,1,1,2),c(3,3,3,3),c(3,3,3,3),c(3,3,3,3)))
+   # p=grid.arrange(dailyHistogramPlots,boxplot_CDH_flow, dailyHistogramAppsandTeacher, 
+                  # layout_matrix = rbind(c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2), c(1,1,1,2),c(3,3,3,3),c(3,3,3,3),c(3,3,3,3)))
+   
+   p=grid.arrange(dailyHistogramPlots, boxplot_CDH_flow,  appsAverage ,otherRolesAveage, 
+   layout_matrix = rbind(c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2),c(1,1,1,2), c(3,3,4,4),c(3,3,4,4),c(3,3,4,4)))
+
       
     }

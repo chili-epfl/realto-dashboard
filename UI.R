@@ -64,7 +64,7 @@ body <- dashboardBody(tabItems(
              selectInput( "userRole",  "User role",     roleList    ),
              uiOutput('activitySchool_dropdown')
            ),
-           htmlOutput("activitySql")
+           h3(""),    htmlOutput("activitySql")
   ),
   
    #============================================= tab: posts #=============================================
@@ -87,7 +87,7 @@ body <- dashboardBody(tabItems(
               h3('Users and posts distribution'),
               plotOutput("postUsers"),
               
-              htmlOutput("postsql"),
+              h3(""),    htmlOutput("postsql"),
               textOutput("postsUsersSql"),
               textOutput("usersPostSequenceSql")
   ),
@@ -111,13 +111,13 @@ body <- dashboardBody(tabItems(
               plotOutput("cumulUsersPlot")
             ),
             
-            htmlOutput("uniqueSql"),
-            htmlOutput("cumulUsersSql")
+            h3(""),    htmlOutput("uniqueSql"),
+            h3(""),    htmlOutput("cumulUsersSql")
   ),
    #============================================= tab:  most Active users #=============================================
   tabItem(tabName = "mostActiveUsers",
           DT::dataTableOutput("mostActiveTable"),
-          htmlOutput("mostActiveUsersSql")
+          h3(""),    htmlOutput("mostActiveUsersSql")
   ),
   
    #============================================= tab: platform usage clusters #=============================================
@@ -137,13 +137,13 @@ body <- dashboardBody(tabItems(
           ),
           plotOutput("usageBarPlot"),
           DT::dataTableOutput("usageTable"),
-          htmlOutput("UsersclusterSql")
+          h3(""),    htmlOutput("UsersclusterSql")
   ),
   
    #============================================= tab:  most Active flows #=============================================
   tabItem(tabName = "flows",
           DT::dataTableOutput("flowsTable"),
-          htmlOutput("flowSql")
+          h3(""),    htmlOutput("flowSql")
   ),
    #============================================= tab:  Social network #=============================================
   tabItem(tabName = "SocialNetwork",
@@ -157,7 +157,6 @@ body <- dashboardBody(tabItems(
             # selectInput("socialProf", "Professions",professionsList  ),
             selectInput("socialLang","Languages", languageList ),
             uiOutput('socialSchool_dropdown')
-            
           ),
           #-----sankey
           h3("Strongest connections"),
@@ -166,7 +165,7 @@ body <- dashboardBody(tabItems(
           sankeyNetworkOutput("socialNetPlot_sankey"),
           # showOutput('socialNetPlot_sankey2', 'd3_sankey'),
           #------- sql query
-          htmlOutput("socialNetSql")
+          h3(""),  htmlOutput("socialNetSql")
   ),
    #============================================= tab:  Regularity #=============================================
   tabItem(tabName = "Regularity",
@@ -174,18 +173,18 @@ body <- dashboardBody(tabItems(
           flowLayout(
             uiOutput('regularity_flow_dropdown')
           ),
-          h3("Regularity: Weekly Similarity Binary (WSB)"),
-          plotOutput("WSB_reg_WeeklyProfilePlot", width = "100%", height= "600px"),
           h3("Regularity: Certain Week Day (CWD)"),
           plotOutput("CWD_reg_WeeklyHistPlot", width = "100%", height= "700px"),
           
           h3("Regularity: Certain Day Hour (CDH)"),
           plotOutput("CDH_reg_DailyHistPlot", width = "100%", height= "700px"),
           
+          h3("Regularity: Weekly Similarity Binary (WSB)"),
+          plotOutput("WSB_reg_WeeklyProfilePlot", width = "100%", height= "600px"),
+          
           # DT::dataTableOutput("flows_Names_members_table"),
           #------- sql query
-          h3(""),
-          htmlOutput("regularityUsersActions_Sql")
+          h3(""),    htmlOutput("regularityUsersActions_Sql")
           
   )
 ))
