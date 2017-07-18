@@ -15,7 +15,8 @@ lapply(list.of.packages, require, character.only=T)
 source("./eventcount.R")
 source("./password.R")
 source("./preparePlots.R")
-
+source("./Regularity.R")
+source("./socialNetworkAnalysis.R")
 drv <- dbDriver("PostgreSQL")
 con <- dbConnect(    drv,     host = "icchilisrv1.epfl.ch",           user = "shiny",    dbname = "realto",    password = password  )
 source("./UI.R")
@@ -67,7 +68,7 @@ server <- function(input, output) {
       )
       conditions = paste(conditions, collapse=' AND ')
       conditions = if(nchar(conditions) > 0) paste0("WHERE ", conditions) else ''
-      paste('WITH users_sub as (select u.*, p.name, s.name from users u LEFT JOIN professions p ON u.profession_id = p._id LEFT JOIN schools s on u.school_id=s._id ', conditions,  ")", sep=" ")
+      paste('WITH users_sub as (select u.*, p.name as professionname, s.name as schoolname from users u LEFT JOIN professions p ON u.profession_id = p._id LEFT JOIN schools s on u.school_id=s._id ', conditions,  ")", sep=" ")
     }
     
     #=================================== tab: activity  #============================================= 
@@ -271,13 +272,34 @@ server <- function(input, output) {
       select  a.user_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'like' AS link_type
       from post_likes a LEFT JOIN posts b on a.post_id=b._id      
     ),
-      network as ( SELECT  links.*, u.first_name as from_first_name, u.last_name as from_last_name, u2.first_name as to_first_name, u2.last_name as to_last_name
+      network as ( SELECT  links.*, u.first_name as from_first_name, u.last_name as from_last_name,u.role_id as from_role,
+                                    u2.first_name as to_first_name, u2.last_name as to_last_name, u2.role_id as to_role
       from links  INNER JOIN  users_sub u on links.from_uid   = u._id  
       INNER JOIN  users_sub u2 on  links.to_uid = u2._id )
-      select net.from_first_name,net.from_last_name, net.to_first_name , net.to_last_name, count(net.*) as weight 
+      select net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role, count(net.*) as weight
       from network net where link_type IN (", input$socialLinkType,")",
-      "group by net.from_first_name,net.from_last_name, net.to_first_name , net.to_last_name"                                    
+      "group by net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role"                                    
     )})
+    
+    
+#     WITH users_sub as (select u.*, p.name as professionname, s.name as schoolname from users u LEFT JOIN professions p ON u.profession_id = p._id LEFT JOIN schools s on u.school_id=s._id ),
+#     links as (
+#       select a.owner_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,
+#       'comment' AS link_type from post_comments a LEFT JOIN posts b on a.post_id=b._id UNION ALL select a.user_id as from_uid , 
+#       b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'like' AS link_type from post_likes a 
+#       LEFT JOIN posts b on a.post_id=b._id 
+#     ), 
+#     network as ( 
+#       SELECT links.*, u.first_name as from_first_name, u.last_name as from_last_name, u.role_id as from_role,
+#       u2.first_name as to_first_name, u2.last_name as to_last_name , u2.role_id as to_role
+#       from links INNER JOIN users_sub u on links.from_uid = u._id INNER JOIN users_sub u2 on links.to_uid = u2._id 
+#     )
+#     select net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role, count(net.*) as weight 
+#     from network net where link_type IN ( 'comment', 'like' ) 
+#     group by net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role
+#     
+#     
+    
     output$socialNetSql = reactive({ socialNetSql()})
     
     socialNetData = reactive({  dbGetQuery(con, socialNetSql())})
@@ -295,8 +317,22 @@ server <- function(input, output) {
     
     output$socialNetPlot_force = renderForceNetwork({
       p=socialNetData()
-      getSocialNetPlot_force(p, input)
+      net=prepareNetwork(p, input$socialRoleType)
+      plotSocialNetPlot_force (net, input)
     })
+    
+    output$socialNetAttributesTable <- DT::renderDataTable({
+        p = socialNetData()
+        netAttributes=data.frame()
+        for(role in c('all', 'apprentice', 'teacher', 'supervisor')){
+          net=prepareNetwork(p,  role)
+          attributes= getNetworkAttributes(net, role)
+          netAttributes=rbind(netAttributes, attributes)
+        }
+        netAttributes
+        
+      }, escape = F, server = F, caption = "attributes of networks")
+    
   #============================================= tab: Regularity  #============================================= 
   getFlowMembersList <- function(selectedFlowName , flows_list_fromDB){
         currentFlow=filter(flows_list_fromDB,name==selectedFlowName)

@@ -148,22 +148,27 @@ body <- dashboardBody(tabItems(
    #============================================= tab:  Social network #=============================================
   tabItem(tabName = "SocialNetwork",
           h3("Social network of users"),
-          #-----force net
-          forceNetworkOutput("socialNetPlot_force"),
-          #---- options
+        #-----force net
+          forceNetworkOutput("socialNetPlot_force",width = "100%", height = "600px"),
+        #---- options
           flowLayout(
             selectInput( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
+            selectInput( "socialRoleType","links bw. apprentices and: ",
+                         c("All"="all" , "Other apprentices" = 'apprentice',"Teachers" = 'teacher',"Supervisors" = 'supervisor')  ),  
             uiOutput('socialProf_dropdown'),
             # selectInput("socialProf", "Professions",professionsList  ),
             selectInput("socialLang","Languages", languageList ),
             uiOutput('socialSchool_dropdown')
           ),
-          #-----sankey
+       #----- network attributes table
+          DT::dataTableOutput("socialNetAttributesTable"),
+        #-----sankey
           h3("Strongest connections"),
           # h5("Use slider to change the number of visualized connections."),
           sliderInput("social_num_link:","Nubmer of connections", 2, 300, 15),
-          sankeyNetworkOutput("socialNetPlot_sankey"),
+          sankeyNetworkOutput("socialNetPlot_sankey",width = "100%", height = "450px"),
           # showOutput('socialNetPlot_sankey2', 'd3_sankey'),
+          
           #------- sql query
           h3(""),  htmlOutput("socialNetSql")
   ),
