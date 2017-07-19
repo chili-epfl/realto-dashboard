@@ -1,7 +1,7 @@
 #----- load libraries
 list.of.packages <- c("shiny","shinydashboard","magrittr","RPostgreSQL","ggplot2","dygraphs","xts",
                       "DT","dplyr","plyr","scales","reshape2","googleVis","reshape","cluster",
-                      "igraph", "networkD3", "rCharts","pracma","gridExtra") 
+                      "igraph", "networkD3", "rCharts","pracma","gridExtra", "RColorBrewer", "blockmodeling") 
 
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages) 
@@ -263,7 +263,7 @@ server <- function(input, output) {
       p
     }, escape = F, server = F)
     
-    #--------------------- tab:  social network -----------------------
+    #=================================== tab:  social network    #=================================== 
     socialNetSql =reactive({ paste(
       users_sub(input$socialLang, 'all', input$socialProf, input$socialSchool),
       ",links as(select  a.owner_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'comment' AS link_type
@@ -314,17 +314,22 @@ server <- function(input, output) {
       getSocialNetPlot_sankey(p, input)
     })
     
-    
     output$socialNetPlot_force = renderForceNetwork({
       p=socialNetData()
       net=prepareNetwork(p, input$socialRoleType)
-      plotSocialNetPlot_force (net, input)
+      plotSocialNetPlot_force (net)
+    })
+    output$blockModel = renderPlot({
+      p=socialNetData()
+      net=prepareNetwork(p, input$socialRoleType)
+      bm=getBlockModel(net, input$block_model_roles_cnt)
+      plotBlockModel(bm)
     })
     
     output$socialNetAttributesTable <- DT::renderDataTable({
         p = socialNetData()
         netAttributes=data.frame()
-        for(role in c('all', 'apprentice', 'teacher', 'supervisor')){
+        for(role in c('all', 'apprentice', 'teacher', 'supervisor', 'teacher_supervisor')){
           net=prepareNetwork(p,  role)
           attributes= getNetworkAttributes(net, role)
           netAttributes=rbind(netAttributes, attributes)
@@ -397,5 +402,5 @@ server <- function(input, output) {
 }
 
 
-#======================== Run the application
+#=================================== Run the application ========================================
 shinyApp(ui = ui, server = server)

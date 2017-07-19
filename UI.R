@@ -149,17 +149,21 @@ body <- dashboardBody(tabItems(
   tabItem(tabName = "SocialNetwork",
           h3("Social network of users"),
         #-----force net
-          forceNetworkOutput("socialNetPlot_force",width = "100%", height = "600px"),
+          forceNetworkOutput("socialNetPlot_force",width = "100%", height = "700px"),
         #---- options
           flowLayout(
             selectInput( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
             selectInput( "socialRoleType","links bw. apprentices and: ",
-                         c("All"="all" , "Other apprentices" = 'apprentice',"Teachers" = 'teacher',"Supervisors" = 'supervisor')  ),  
+                         c("All"="all" , "Other apprentices" = 'apprentice',"Teachers" = 'teacher',
+                           "Supervisors" = 'supervisor', 'teacher and supervisor' ='teacher_supervisor') ),  
             uiOutput('socialProf_dropdown'),
             # selectInput("socialProf", "Professions",professionsList  ),
             selectInput("socialLang","Languages", languageList ),
             uiOutput('socialSchool_dropdown')
           ),
+        #---------- blockmodel
+          sliderInput("block_model_roles_cnt:","Nubmer of roles", 2, 6, 3),
+          plotOutput("blockModel", width = "100%", height= "400px"),
        #----- network attributes table
           DT::dataTableOutput("socialNetAttributesTable"),
         #-----sankey
