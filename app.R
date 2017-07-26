@@ -18,7 +18,7 @@ source("./preparePlots.R")
 source("./Regularity.R")
 source("./socialNetworkAnalysis.R")
 drv <- dbDriver("PostgreSQL")
-con <- dbConnect(    drv,     host = "icchilisrv1.epfl.ch",           user = "shiny",    dbname = "realto",    password = password  )
+con <- dbConnect(    drv,     host = "icchilisrv1.epfl.ch",  user = "shiny",    dbname = "realto",    password = password  )
 source("./UI.R")
 
 ui <- dashboardPage(header, sidebar, body)
@@ -264,79 +264,106 @@ server <- function(input, output) {
     }, escape = F, server = F)
     
     #=================================== tab:  social network    #=================================== 
+#     socialNetSql =reactive({ paste(
+#       users_sub(input$socialLang, 'all', input$socialProf, input$socialSchool),
+#       ",links as(select  a.owner_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'comment' AS link_type
+#       from post_comments a LEFT JOIN posts b on a.post_id=b._id
+#       UNION ALL
+#       select  a.user_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'like' AS link_type
+#       from post_likes a LEFT JOIN posts b on a.post_id=b._id      
+#     ),
+#       network as ( SELECT  links.*, u.first_name as from_first_name, u.last_name as from_last_name,u.role_id as from_role,
+#                                     u2.first_name as to_first_name, u2.last_name as to_last_name, u2.role_id as to_role
+#       from links  INNER JOIN  users_sub u on links.from_uid   = u._id  
+#       INNER JOIN  users_sub u2 on  links.to_uid = u2._id )
+#       select net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role, count(net.*) as weight
+#       from network net where link_type IN (", input$socialLinkType,")",
+#       "group by net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role"                                    
+#     )})
+#     
     socialNetSql =reactive({ paste(
       users_sub(input$socialLang, 'all', input$socialProf, input$socialSchool),
-      ",links as(select  a.owner_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'comment' AS link_type
-      from post_comments a LEFT JOIN posts b on a.post_id=b._id
+    ",links as(
+      select a.owner_id as from_uid , b.owner_id as to_uid, a.created_at as created_at,'comment' AS link_type 
+      from post_comments a LEFT JOIN posts b on a.post_id=b._id where a.deleted='f'
+      
+      UNION ALL 
+      select a.user_id as from_uid , b.owner_id as to_uid, a.created_at as created_at,'like' AS link_type
+      from post_likes a LEFT JOIN posts b on a.post_id=b._id 
+      
       UNION ALL
-      select  a.user_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'like' AS link_type
-      from post_likes a LEFT JOIN posts b on a.post_id=b._id      
-    ),
-      network as ( SELECT  links.*, u.first_name as from_first_name, u.last_name as from_last_name,u.role_id as from_role,
-                                    u2.first_name as to_first_name, u2.last_name as to_last_name, u2.role_id as to_role
-      from links  INNER JOIN  users_sub u on links.from_uid   = u._id  
-      INNER JOIN  users_sub u2 on  links.to_uid = u2._id )
-      select net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role, count(net.*) as weight
-      from network net where link_type IN (", input$socialLinkType,")",
-      "group by net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role"                                    
+		  select ldcom.owner_id as from_uid, ld.apprentice_id as to_uid, min(ldcom.created_at) as created_at, 'ld_comment' AS link_type 
+	  	from learndoc_comments ldcom JOIN learning_documentations ld  on ld._id=ldcom.entry_id 
+  		group by ld._id, ldcom.owner_id , ld.apprentice_id
+
+      UNION ALL 
+      SELECT apprentice_id as from_uid, data::jsonb#>>'{info_supervisor,0,id}' as to_uid,created_at as created_at, 'ld_create' AS link_type
+      FROM public.learning_documentations WHERE data::jsonb#>>'{info_supervisor,0,id}' is not null and validation_state='EDITING' and deleted='false'
+     
+      UNION ALL 
+      SELECT  _extra_props::jsonb#>>'{validations,0,feedbackBy,id}' as from_uid, apprentice_id as to_uid, 
+      (_extra_props::jsonb#>>'{validations,0,createdAt}')::timestamp as created_at, 'ld_feedback' AS link_type 
+      FROM public.learning_documentations WHERE _extra_props::jsonb#>>'{validations,0,feedbackBy,id}' is not null and validation_state!='EDITING' and deleted='false'
+      ),
+      network as (
+        SELECT links.*,date_trunc('month',links.created_at) as created_at_month, date_trunc('quarter',links.created_at) as created_at_quarter ,
+        u.first_name as from_first_name, u.last_name as from_last_name,u.role_id as from_role, 
+        u2.first_name as to_first_name, u2.last_name as to_last_name, u2.role_id as to_role 
+        from links
+        INNER JOIN users_sub u on links.from_uid = u._id 
+        INNER JOIN users_sub u2 on links.to_uid = u2._id 
+      ) 
+      select * from network where 
+      NOT(link_type='ld_create' and (from_role NOT IN ('apprentice') or to_role NOT IN ('teacher', 'supervisor')))
+      and
+      NOT (link_type='ld_feedback' and (from_role NOT IN ('teacher', 'supervisor') or to_role NOT IN ('apprentice')))"
     )})
-    
-    
-#     WITH users_sub as (select u.*, p.name as professionname, s.name as schoolname from users u LEFT JOIN professions p ON u.profession_id = p._id LEFT JOIN schools s on u.school_id=s._id ),
-#     links as (
-#       select a.owner_id as from_uid , b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,
-#       'comment' AS link_type from post_comments a LEFT JOIN posts b on a.post_id=b._id UNION ALL select a.user_id as from_uid , 
-#       b.owner_id as to_uid, b.flow_id as to_flow_id, b.post_type as to_post_type ,'like' AS link_type from post_likes a 
-#       LEFT JOIN posts b on a.post_id=b._id 
-#     ), 
-#     network as ( 
-#       SELECT links.*, u.first_name as from_first_name, u.last_name as from_last_name, u.role_id as from_role,
-#       u2.first_name as to_first_name, u2.last_name as to_last_name , u2.role_id as to_role
-#       from links INNER JOIN users_sub u on links.from_uid = u._id INNER JOIN users_sub u2 on links.to_uid = u2._id 
-#     )
-#     select net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role, count(net.*) as weight 
-#     from network net where link_type IN ( 'comment', 'like' ) 
-#     group by net.from_first_name,net.from_last_name, net.from_role, net.to_first_name , net.to_last_name, net.to_role
-#     
-#     
     
     output$socialNetSql = reactive({ socialNetSql()})
     
     socialNetData = reactive({  dbGetQuery(con, socialNetSql())})
-    
-    # columns are: from_first_name,from_last_name, to_first_name , to_last_name,  weight
-    #   output$socialNetPlot_sankey2 = renderChart2({
-    #     p=socialNetData()
-    #     getSocialNetPlot_sankey2(p, input)
-    #   })
-    output$socialNetPlot_sankey = renderSankeyNetwork({
+
+    networkModel <- reactive({
       p=socialNetData()
+      p=filterLinkTypes(p, input$socialLinkType)
+      
+      net=prepareNetwork(p, input$socialRoleType)
+      
+      forceDiagram= plotSocialNetPlot_force (net)
+      
+      attributes= getNetworkAttributes(net, input$block_model_roles_cnt)
+       
+      list(filteredNetData=p, network=net, forceDiagram = forceDiagram, networkAttributes = attributes )
+    })
+    
+    networkBlockModel <- reactive({
+      net=networkModel()$network
+      roleGraph=getBlockModel(net, input$block_model_roles_cnt)
+      blockModelAttributes = getBlockModelAttributes (roleGraph)
+      list(roleGraph=roleGraph, blockModelAttributes = blockModelAttributes )
+    
+    })
+    
+    output$socialNetPlot_sankey = renderSankeyNetwork({
+      p=networkModel()$filteredNetData
       getSocialNetPlot_sankey(p, input)
     })
     
     output$socialNetPlot_force = renderForceNetwork({
-      p=socialNetData()
-      net=prepareNetwork(p, input$socialRoleType)
-      plotSocialNetPlot_force (net)
+      networkModel()$forceDiagram
     })
-    output$blockModel = renderPlot({
-      p=socialNetData()
-      net=prepareNetwork(p, input$socialRoleType)
-      bm=getBlockModel(net, input$block_model_roles_cnt)
-      plotBlockModel(bm)
+    output$blockModelPlot = renderPlot({
+      roleGraph=networkBlockModel()$roleGraph
+      plotBlockModel(roleGraph)
     })
     
     output$socialNetAttributesTable <- DT::renderDataTable({
-        p = socialNetData()
-        netAttributes=data.frame()
-        for(role in c('all', 'apprentice', 'teacher', 'supervisor', 'teacher_supervisor')){
-          net=prepareNetwork(p,  role)
-          attributes= getNetworkAttributes(net, role)
-          netAttributes=rbind(netAttributes, attributes)
-        }
-        netAttributes
-        
-      }, escape = F, server = F, caption = "attributes of networks")
+      t(networkModel()$networkAttributes)
+    },options = list(scrollX = TRUE,scrollY=400,paging=F), caption = "attributes of networks")
+    
+    output$blockModeAttributesTable <- DT::renderDataTable({
+      networkBlockModel()$blockModelAttributes
+    },options = list(scrollX = TRUE,paging=F), caption = "attributes of roles in the block model",)#escape = F, server = F)
     
   #============================================= tab: Regularity  #============================================= 
   getFlowMembersList <- function(selectedFlowName , flows_list_fromDB){

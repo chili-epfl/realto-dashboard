@@ -145,14 +145,21 @@ body <- dashboardBody(tabItems(
           DT::dataTableOutput("flowsTable"),
           h3(""),    htmlOutput("flowSql")
   ),
-   #============================================= tab:  Social network #=============================================
+   #============================================= tab: Social network #=============================================
   tabItem(tabName = "SocialNetwork",
           h3("Social network of users"),
         #-----force net
-          forceNetworkOutput("socialNetPlot_force",width = "100%", height = "700px"),
+          # forceNetworkOutput("socialNetPlot_force",width = "80%", height = "600px"),
+        fluidRow(
+          column(9, forceNetworkOutput("socialNetPlot_force", height = "600px")),
+          column(3, DT::dataTableOutput("socialNetAttributesTable", height= "600px"))
+        ),
         #---- options
           flowLayout(
-            selectInput( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
+            # selectInput( "socialLinkType","Link type: ",c("All"="'comment', 'like'" , "Comment" = "'comment'",  "Like" = "'like'" )  ),  
+            selectInput( "socialLinkType","Link type: ",c("All"="all" , "Comment" = "comment",  "Like" = "like", 
+                                                          "create LD"= "ld_create", "comment on LD"='ld_comment', "evaluate LD"="ld_feedback", 
+                                                          'Social (comment, like)'='social',"LD (create, comment, evaluate)"='ld_all')),  
             selectInput( "socialRoleType","links bw. apprentices and: ",
                          c("All"="all" , "Other apprentices" = 'apprentice',"Teachers" = 'teacher',
                            "Supervisors" = 'supervisor', 'teacher and supervisor' ='teacher_supervisor') ),  
@@ -161,19 +168,25 @@ body <- dashboardBody(tabItems(
             selectInput("socialLang","Languages", languageList ),
             uiOutput('socialSchool_dropdown')
           ),
-        #---------- blockmodel
-          sliderInput("block_model_roles_cnt:","Nubmer of roles", 2, 6, 3),
-          plotOutput("blockModel", width = "100%", height= "400px"),
-       #----- network attributes table
-          DT::dataTableOutput("socialNetAttributesTable"),
-        #-----sankey
+      #----- network attributes table
+        # DT::dataTableOutput("socialNetAttributesTable"),
+      #---------- blockmodel
+        sliderInput("block_model_roles_cnt:","Nubmer of roles", 2, 6, 3),
+#         plotOutput("blockModelPlot", width = "100%", height= "500px"),
+#         DT::dataTableOutput("blockModeAttributesTable", width = "50%", height= "400px"),
+      fluidRow(
+        column(6, plotOutput("blockModelPlot", height= "400px")),
+        column(6, DT::dataTableOutput("blockModeAttributesTable", height= "400px"))
+        ),
+      
+      #-----sankey
           h3("Strongest connections"),
           # h5("Use slider to change the number of visualized connections."),
           sliderInput("social_num_link:","Nubmer of connections", 2, 300, 15),
           sankeyNetworkOutput("socialNetPlot_sankey",width = "100%", height = "450px"),
           # showOutput('socialNetPlot_sankey2', 'd3_sankey'),
           
-          #------- sql query
+      #------- sql query
           h3(""),  htmlOutput("socialNetSql")
   ),
    #============================================= tab:  Regularity #=============================================

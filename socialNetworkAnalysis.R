@@ -1,44 +1,42 @@
-#============================ Social network ================================================
-# getSocialNetPlot_sankey2 <-  function(p, input){
-#   p$from_fullName= paste(p$from_first_name, p$from_last_name)
-#   p$to_fullName= paste(p$to_first_name, p$to_last_name)
-#   p=p[, c('from_fullName' , 'to_fullName' ,'weight'  )]
-#   colnames(p) <- c("source", "target", "value")
-#   # remove self loops, as sankey doesn't support that
-#   p = filter(p, source != target)
-#   #---- number of links to be shown
-#   links_count = min (nrow(p) , input$social_num_link)
-#   # change target labels, in sankey if source and target overlap, they 
-#   p$target=paste0(p$target,' ')
-#   # sort : highest weights on top
-#   p=p[order(-p$value),]
-#   sankeyPlot <- rCharts$new()
-#   sankeyPlot$setLib("./d3_sankey")
-#   sankeyPlot$set(
-#     data = p[1:links_count,],    nodeWidth = 30,    nodePadding = 7,    layout = 30,
-#     width = 900,     height =600,
-#     labelFormat = "0.01"
-#   )
-#   (sankeyPlot)
-# }
+#----------------------------------- filterLinkTypes --------------------------------------- 
+filterLinkTypes<-  function (p, linkTypes)
+{
+  # linkTypes='ld_all'
+  # p=read.csv("/home/mina/Dropbox/Mina/RealtoResearchDashboard/test/net.csv", stringsAsFactors = F)
 
+#--- filter link type
+  if (linkTypes=='ld_all') linkTypes_set =c("ld_create", "ld_feedback", "ld_comment")
+  if (linkTypes=='social') linkTypes_set =c("comment", "like", "ld_comment")
+  if (linkTypes !='all'){    p= filter(p,link_type %in% linkTypes_set )  }
+#------- build full name -------
+  p$from_fullName= paste(p$from_first_name, p$from_last_name)
+  p$to_fullName= paste(p$to_first_name, p$to_last_name)
+  p= filter(p, from_fullName != 'Valentina Caruso' & to_fullName!='Valentina Caruso')
+  #------remove self loops
+  p= filter(p, from_fullName != to_fullName)
+  #----- order so that links in alphabetic order (to get fixed color for apprentice role in network)
+  p=p[order(p$from_role, p$to_role),]
+  #   if (linkTypes %in% c("ld_feedback", "ld_comment"))      p=p[order(p$to_role, p$from_role),]
+  
+#---------------- compute weight of connections
+  links= ddply(p,.(from_fullName,to_fullName, from_role, to_role), summarize, weight=length(from_role) )
+  links
+}
 #----------------------------------- prepareNetwork --------------------------------------- 
 
   prepareNetwork <-  function(p, roles_type){
-    print(roles_type)
-    p$from_fullName= paste(p$from_first_name, p$from_last_name)
-    p$to_fullName= paste(p$to_first_name, p$to_last_name)
-    p= filter(p, from_fullName != 'Valentina Caruso' & p$to_last_name!='Valentina Caruso')
+    # print(roles_type)
     #---- filter based on roles
     roles=roles_type
-    if(roles_type=='all')   roles= c('apprentice', 'supervisor','teacher')
+    if(roles_type=='all')   
+      roles= c('apprentice', 'supervisor','teacher')
     # apprentices connected to both teacher and supervisor
-    if(roles_type=='teacher_supervisor')    roles= c('supervisor','teacher')
+    if(roles_type=='teacher_supervisor') 
+      roles= c('supervisor','teacher')
     p=filter(p, (from_role %in% c('apprentice') &  to_role %in% roles )      | 
-                (from_role %in% roles      &  to_role %in% c('apprentice') )
+                (from_role %in% roles &  to_role %in% c('apprentice') )
              # |  (from_role %in% c('apprentice') &  to_role %in% c('apprentice') )
                 )
-    
     #---- get users-role mapping
     from_u_role=unique(p[, c('from_fullName', 'from_role')]);   names(from_u_role)= c('name', 'role')
     to_u_role=unique(p[, c('to_fullName', 'to_role')]);  names(to_u_role)= c('name', 'role')
@@ -60,6 +58,9 @@
     V(g)$outDegree=as.character(igraph::degree(g,mode = 'out'))
     V(g)$inDegree=as.character(igraph::degree(g,mode = 'in'))
     # write.graph(g,'nn', 'gml')
+    #---- remove isolated nodes
+    # g <- induced.subgraph(g, which(degree(g) > 0))
+    
     g
   }
 #----------------------------------- plotSocialNetPlot_force --------------------------------------- 
@@ -78,9 +79,9 @@
     #--- plot as force directed net
     forceNetwork(Links = g_d3$links, Nodes = g_d3$nodes,Source = 'source', Target = 'target',
                  NodeID = 'name', Nodesize ='totalDegree',Value='value',
-                 zoom=F,Group = 'group',opacity = 10,opacityNoHover =0.1, fontSize = 14 ,legend=T,arrows = T, bounded =T,
+                 zoom=F,Group = 'group',opacity = 10,opacityNoHover =0.0, fontSize = 14 ,legend=T,arrows = T, bounded =T,
                  # linkWidth = networkD3::JS("function(d) {  return Math.sqrt(d.value)*2; }"),height = 600,width = 600,
-                 colourScale = JS('d3.select("svg").style("background-color", "white");force.velocityDecay([0.6]);d3.scaleOrdinal(d3.schemeCategory10);'))
+                 colourScale = JS('d3.select("svg").style("background-color", "white");force.velocityDecay([0.65]);d3.scaleOrdinal(d3.schemeCategory10);'))
   }
 #----------------------------------- getNetworkAttributes --------------------------------------- 
 
@@ -88,7 +89,6 @@
     ug <- as.undirected(g)
     sp <- shortest.paths(g)
     pathesInd <- intersect(which(sp > 0), which(sp < Inf))
-    
     componentsDiameters= sapply(decompose(g), function(sg) {
       diameter(sg)
     })
@@ -96,15 +96,33 @@
     componentsSize=(components(g)$csize)
     componentsSize=componentsSize[order(componentsSize, decreasing = T)]
     
-    res=data.frame( networkType=roles_type,
+    res=data.frame( #networkType=roles_type,
                     nodes=length(V(g)),
                     edges=length(E(g)),
+                    sum_linkWeight= sum(E(g)$weight),
+                    avg_linkWeight= mean(E(g)$weight),
                     avg_degree=mean(igraph::degree(g,mode = 'all')),
+                    avg_strength=mean(igraph::strength(g,mode = 'all')),
                     density=( 2 * length(E(ug)) / (length(V(ug)) * (length(V(ug)) - 1))), 
                     reciprocity = reciprocity(g),
+                    apprentices=length(V(g)[which(V(g)$role=='apprentice')]),
+                    teachers=length(V(g)[which(V(g)$role=='teacher')]),
+                    supervisors=length(V(g)[which(V(g)$role=='supervisor')]),
+                    # apps_inDeg=mean(degree(g, mode='in')[which(V(g)$role=='apprentice')]),
+                    # apps_outDeg=mean(degree(g, mode='out')[which(V(g)$role=='apprentice')]),
+                    apps_totDeg=mean(degree(g)[which(V(g)$role=='apprentice')]),
+                    # teacher_inDeg=mean(degree(g, mode='in')[which(V(g)$role=='teacher')]),
+                    # teacher_outDeg=mean(degree(g, mode='out')[which(V(g)$role=='teacher')]),
+                    teacher_totDeg=mean(degree(g)[which(V(g)$role=='teacher')]),
+                    # supervisor_inDeg= mean(degree(g, mode='in')[which(V(g)$role=='supervisor')]),
+                    # supervisor_outDeg=mean(degree(g, mode='out')[which(V(g)$role=='supervisor')]),
+                    supervisor_totDeg=mean(degree(g)[which(V(g)$role=='supervisor')]),
+                    apprentices_betweenness=mean(betweenness(g, directed = F, normalized = F)[which(V(g)$role=='apprentice')]),
+                    teachers_betweenness=mean(betweenness(g, directed = F, normalized = F)[which(V(g)$role=='teacher')]),
+                    supervisors_betweenness=mean(betweenness(g, directed = F, normalized = F)[which(V(g)$role=='supervisor')]),
                     diameter=diameter(g),
                     avg_pathLen=mean(sp[pathesInd]), 
-                    clust_coeff =mean(transitivity(g,type="local"), na.rm = T),
+                    clust_coeff =transitivity(g,type="global"),#mean(transitivity(g,type="local"), na.rm = T),
                     components_cnt=components(g)$no,
                     comp_meanSize=mean(componentsSize)
     )
@@ -124,14 +142,38 @@
     
     V(roleGraph)$members <- sapply(1:length(V(roleGraph)), function(cl) {
       paste(V(g)$name[bm$clu == cl], collapse=",")})
-    
+  
+    V(roleGraph)$roles <- sapply(1:length(V(roleGraph)), function(cl) {
+      paste(V(g)$role[bm$clu == cl], collapse=",")})
+
     V(roleGraph)$membersCount <- sapply(1:length(V(roleGraph)), function(cl) {
       length(which(bm$clu == cl))  })
     
-    V(roleGraph)$size <- round( (V(roleGraph)$membersCount / length(V(g)))*100 * 2 , 0)
+    V(roleGraph)$size <- round( (V(roleGraph)$membersCount / length(V(g)))*100 * 1.5 , 0)
+    
+    V(roleGraph)$apprenticesCount <- sapply(1:length(V(roleGraph)), function(cl) {
+      sum(V(g)$role[bm$clu == cl]=='apprentice')})
+    
+    V(roleGraph)$teachersCount <- sapply(1:length(V(roleGraph)), function(cl) {
+      sum(V(g)$role[bm$clu == cl]=='teacher')})
+    
+    V(roleGraph)$supervisorCount <- sapply(1:length(V(roleGraph)), function(cl) {
+      sum(V(g)$role[bm$clu == cl]=='supervisor')})
+    
+    V(roleGraph)$AvgIndegree <- sapply(1:length(V(roleGraph)), function(cl) {
+      round(mean(as.numeric(V(g)$inDegree)[bm$clu == cl]),1)})
+    
+    V(roleGraph)$AvgOutdegree <- sapply(1:length(V(roleGraph)), function(cl) {
+      round(mean(as.numeric(V(g)$outDegree)[bm$clu == cl]),1)})
+    
+    V(roleGraph)$AvgTotalDegree <- sapply(1:length(V(roleGraph)), function(cl) {
+      round(mean(as.numeric(V(g)$totalDegree)[bm$clu == cl]),1)})
     
     #-- give names to roles based on connection patterns
     V(roleGraph)$label <-sapply(1:length(V(roleGraph)), function(node) {
+      paste('R', node )
+    })
+    V(roleGraph)$role <-sapply(1:length(V(roleGraph)), function(node) {
       inDeg=degree(roleGraph, mode='in',loops=F)[node]
       outDeg=degree(roleGraph, mode='out',loops=F)[node]
       totalDeg_noLoop=degree(roleGraph, mode='all',loops=F)[node]
@@ -148,22 +190,42 @@
       } else if(label=='') {
         label='Inactive'
       }
-      label=paste0(label, '-',V(roleGraph)$membersCount[node])
+      # label=paste0(label, '-',V(roleGraph)$membersCount[node])
       return(label)
     })
     # write.graph(roleGraph, 'bm', "gml")
     return(roleGraph)
+  
   }
+  
+  
+# #----------------------------------- getBlockModelAttributes --------------------------------------- 
+  getBlockModelAttributes <- function(roleGraph){
+    res=sapply(V(roleGraph), function(b) {
+      c( 
+        'Label'=V(roleGraph)[b]$label,
+        'Structural Role'=V(roleGraph)[b]$role,
+        'Size'=V(roleGraph)[b]$membersCount,
+        '#apprentices'=V(roleGraph)[b]$apprenticesCount,
+        '#teachers'=V(roleGraph)[b]$teachersCount,
+        '#supervisors'=V(roleGraph)[b]$supervisorCount,
+        'Avg In-degree'=V(roleGraph)[b]$AvgIndegree,
+        'Avg out-degree'=V(roleGraph)[b]$AvgOutdegree,
+        'Avg total-degree'=V(roleGraph)[b]$AvgTotalDegree
+      )
+    })
+    res
+  }
+ 
 #----------------------------------- plotBlockModel --------------------------------------- 
-
+  
   plotBlockModel <- function(roleGraph){
-    # roleGraph=bm
-    
     myColPal=brewer.pal(length(V(roleGraph)),'Accent')
-    plot.igraph(roleGraph, vertex.color=myColPal, #vertex.size=80,
+    plot.igraph(roleGraph, 
                 edge.width=2,edge.color='black',
-                vertex.label.color="black", vertex.label.cex=1, vertex.label.dist=0)
-  }
+                vertex.color=myColPal, #vertex.size=80,
+                vertex.label.color="black", vertex.label.cex=1.5, vertex.label.dist=0, vertex.shape="square")
+    }
 #------------------------------- getRegularSimilarityClusters ------------------------------
   getRegularSimilarityClusters <- function(g,nroles) {
     regeDist <- REGE.for(get.adjacency(g, sparse=FALSE))$E
@@ -171,7 +233,7 @@
     # nc <- nselectboot(regeDist, clustermethod = disthclustCBI, method="ward.D", krange = 2:5)$kopt
     nc <- nroles  # number of roles
     dendogram <- hclust(as.dist(1 - regeDist), method = "ward.D2")
-    plot(dendogram)
+    # plot(dendogram)
     cutree(dendogram, nc)
     
   }
@@ -184,9 +246,7 @@
 #----------------------------------- getSocialNetPlot_sankey --------------------------------------- 
 
   getSocialNetPlot_sankey <-  function(p, input){
-    p$from_fullName= paste(p$from_first_name, p$from_last_name)
-    p$to_fullName= paste(p$to_first_name, p$to_last_name)
-    #---- filter
+    #---- filter role
     roles_type=input$socialRoleType
     if(roles_type=='all')
       roles_type= c('apprentice', 'supervisor','teacher')
@@ -199,12 +259,13 @@
     p=p[order(-p$value),] #--- sort links based on weight
     links_count = min (nrow(p) , input$social_num_link) #number of links to be shown
     p=p[1:links_count,]# keep only strongest links
+    
     ####### first build igraph
     edgeslist=(p[,c("source", "target")])
     edgeslist=  as.vector(as.character(as.matrix(t(edgeslist))))
     g <- graph(edgeslist)
     E(g)$weight <- p$value
-    
+             
     ####### then convert it to networkd3 graph
     wc <- cluster_walktrap(g)
     members <- membership(wc)
