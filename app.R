@@ -313,10 +313,10 @@ server <- function(input, output) {
         INNER JOIN users_sub u on links.from_uid = u._id 
         INNER JOIN users_sub u2 on links.to_uid = u2._id 
       ) 
-      select * from network where 
-      NOT(link_type='ld_create' and (from_role NOT IN ('apprentice') or to_role NOT IN ('teacher', 'supervisor')))
-      and
-      NOT (link_type='ld_feedback' and (from_role NOT IN ('teacher', 'supervisor') or to_role NOT IN ('apprentice')))"
+      	select * from network where 
+    		NOT(link_type='ld_create' and (from_role NOT IN ('apprentice') or to_role NOT IN ('teacher', 'supervisor')))
+    		and
+    		NOT (link_type IN ('ld_feedback', 'ld_comment') and (from_role NOT IN ('teacher', 'supervisor') or to_role NOT IN ('apprentice')))"
     )})
     
     output$socialNetSql = reactive({ socialNetSql()})
@@ -328,9 +328,8 @@ server <- function(input, output) {
       p=filterLinkTypes(p, input$socialLinkType)
       
       net=prepareNetwork(p, input$socialRoleType)
-      
+      print(sum(E(net)$weight))
       forceDiagram= plotSocialNetPlot_force (net)
-      
       attributes= getNetworkAttributes(net, input$block_model_roles_cnt)
        
       list(filteredNetData=p, network=net, forceDiagram = forceDiagram, networkAttributes = attributes )
