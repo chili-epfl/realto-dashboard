@@ -21,7 +21,6 @@ filterLinkTypes<-  function (p, linkTypes)
   p
 }
 #----------------------------------- prepareNetwork --------------------------------------- 
-
   prepareNetwork <-  function(p, roles_type){
     #---------------- compute weight of connections
     p= ddply(p,.(from_fullName,to_fullName, from_role, to_role), summarize, weight=length(from_role) )
@@ -32,8 +31,7 @@ filterLinkTypes<-  function (p, linkTypes)
     # apprentices connected to both teacher and supervisor
     if(roles_type=='teacher_supervisor')       roles= c('supervisor','teacher')
     if (roles_type!='all') p=filter(p, (from_role %in% c('apprentice') &  to_role %in% roles )      | 
-                (from_role %in% roles &  to_role %in% c('apprentice') )
-                )
+                (from_role %in% roles &  to_role %in% c('apprentice')))#   (from_role %in%  &  to_role %in% roles  ) )
     #---- get users-role mapping
     from_u_role=unique(p[, c('from_fullName', 'from_role')]);   names(from_u_role)= c('name', 'role')
     to_u_role=unique(p[, c('to_fullName', 'to_role')]);  names(to_u_role)= c('name', 'role')
@@ -51,6 +49,12 @@ filterLinkTypes<-  function (p, linkTypes)
     if(roles_type=='teacher_supervisor'){
       V(g)$connectedRoles <- sapply(1:length(V(g)), function(i) { 
                           neighborsRoles=paste(sort(unique(unlist(neighbors(g, V(g)[i],'all')$role))), collapse = '_') } )
+#       apps= which(grepl('supervisor_teacher',V(g)$connectedRoles ) & V(g)$role=='apprentice')
+#       apps_neighbours=unique(as.vector(unlist(lapply(V(g), function(v) neighbors(g,v)))))
+#       apss_neighbours_exceptApprenticis = apps_neighbours[which(V(g)$role[apps_neighbours]!="apprentice")]
+#       finalSubset=union(apps, apss_neighbours_exceptApprenticis)
+      # g <- induced.subgraph (g, finalSubset)    
+     
       g <- induced.subgraph (g, (grepl('supervisor_teacher',V(g)$connectedRoles   )) | (V(g)$role != 'apprentice'))
       g <- induced.subgraph(g, which(degree(g) > 0))
     }
@@ -211,17 +215,25 @@ filterLinkTypes<-  function (p, linkTypes)
   
 # #----------------------------------- getBlockModelAttributes --------------------------------------- 
   getBlockModelAttributes <- function(roleGraph){
+    allApps=  sum(V(roleGraph)[1:3]$apprenticesCount)
+    allTeachers=sum(V(roleGraph)[1:3]$teachersCount)
+    allSupervisors=sum(V(roleGraph)[1:3]$supervisorCount)
+    allMembers= allApps + allTeachers + allSupervisors
     res=sapply(V(roleGraph), function(b) {
       c( 
         'Label'=V(roleGraph)[b]$label,
         'Structural Role'=V(roleGraph)[b]$role,
-        'Size'=V(roleGraph)[b]$membersCount,
+        '#Members (size)'=V(roleGraph)[b]$membersCount,
         '#apprentices'=V(roleGraph)[b]$apprenticesCount,
         '#teachers'=V(roleGraph)[b]$teachersCount,
         '#supervisors'=V(roleGraph)[b]$supervisorCount,
         'Avg In-degree'=V(roleGraph)[b]$AvgIndegree,
         'Avg out-degree'=V(roleGraph)[b]$AvgOutdegree,
-        'Avg total-degree'=V(roleGraph)[b]$AvgTotalDegree
+        'Avg total-degree'=V(roleGraph)[b]$AvgTotalDegree,
+        '%members'=round(V(roleGraph)[b]$membersCount*100/allMembers , 0),
+        '%apprentices'=round(V(roleGraph)[b]$apprenticesCount*100/allApps , 0),
+        '%teachers'=round(V(roleGraph)[b]$teachersCount*100/allTeachers , 0), 
+        '%supervisors'=round(V(roleGraph)[b]$supervisorCount*100/allSupervisors , 0)
       )
     })
     res
