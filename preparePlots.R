@@ -20,7 +20,7 @@ getPostSequencePlot <-  function (p, input){
     scale_x_date(breaks = waiver(),labels = date_format("%d %b %y"),limits = c(startT,endT) )+
     theme_bw()+theme(text = element_text(15))+   labs(title="",   x ="Time", y = "User Name" )
   print(pl)
-  ggsave (paste0('PostSequence_',input$userRolepost,'_', input$activityProfpost, '.png'), width = 30, height = 12, units = 'cm')
+  # ggsave (paste0('PostSequence_',input$userRolepost,'_', input$activityProfpost, '.png'), width = 30, height = 12, units = 'cm')
   return(pl)
 }
 # ========================== individuals platform usage =====================================
@@ -43,7 +43,7 @@ getUsageBarPlot<-  function(p, input) {
     theme_bw()+ theme(text = element_text(15),axis.text.x = element_blank())+labs(title="",   x =" User Name", y = "Count" )+
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
   print(pl)
-  ggsave (paste0('Users_usage_', input$userClustRole,'_',input$userClustProf, '.png'), width = 30, height = 12, units = 'cm')
+  # ggsave (paste0('Users_usage_', input$userClustRole,'_',input$userClustProf, '.png'), width = 30, height = 12, units = 'cm')
   return(pl)
 }
 #============================ clusters of platform usage ================================================
@@ -84,8 +84,9 @@ getUsageClusterPlot<-  function(p, input) {
   
   pl=ggplot(melted, aes(type,value, fill=type ))+geom_boxplot( outlier.shape=1)+facet_wrap(~cluster, ncol = 4)+
     theme_bw()+ theme(text = element_text(15),axis.text.x = element_blank())+labs(title="",   x =" ", y = "Count" )
-  print(pl)# # ggsave (paste0('ClusterBoxPlot_',input$users_clust_cnt,'Clusters_',input$userClustRole,'role_',input$userClustProf,'prof_','.png'), width = 10, height = 10, units = 'cm')
-  # if (!input$NormalizeVals)
-    ggsave (paste0('Clusters_',input$userClustRole,'_', input$userClustProf, '.png'), width = 25, height = 8*(ceiling(input$users_clust_cnt/4)), units = 'cm')
+  print(pl)# 
+  ## ggsave (paste0('ClusterBoxPlot_',input$users_clust_cnt,'Clusters_',input$userClustRole,'role_',input$userClustProf,'prof_','.png'), width = 10, height = 10, units = 'cm')
+  ## if (!input$NormalizeVals)
+    #ggsave (paste0('Clusters_',input$userClustRole,'_', input$userClustProf, '.png'), width = 25, height = 8*(ceiling(input$users_clust_cnt/4)), units = 'cm')
   return(pl)
 }
