@@ -45,9 +45,9 @@ sidebar <- dashboardSidebar(sidebarMenu(
   menuItem("Users", tabName = "uniqueUsers",    icon = icon("th") ),
   menuItem("All activity",tabName = "activity", icon = icon("th")),
   menuItem("Posts and Users/posts", tabName = "posts", icon = icon("th")),
-  menuItem("Users clusters", tabName = "Usersclusters", icon = icon("th")),
-  menuItem("Social Network", tabName = "SocialNetwork", icon = icon("th")),
-  menuItem("Regularity", tabName = "Regularity", icon = icon("th")),
+  menuItem("Time analysis module", tabName = "Regularity", icon = icon("th")),
+  menuItem("Activity analysis module", tabName = "Usersclusters", icon = icon("th")),
+  menuItem("Network analysis module", tabName = "SocialNetwork", icon = icon("th")),
   menuItem("REALTO", icon = icon("file-code-o"), href = "https://www.realto.ch")
 ))
 
@@ -69,8 +69,7 @@ body <- dashboardBody(tabItems(
   
    #============================================= tab: posts #=============================================
   tabItem(    tabName = "posts",
-              h3('Number of posts over time'),
-              dygraphOutput("rollerPost"),
+
               flowLayout(
                 sliderInput("rollPeriodpost", "Smoothing:", 1, 100, 1),
                 uiOutput('activityProfpost_dropdown'),
@@ -84,9 +83,10 @@ body <- dashboardBody(tabItems(
               h5('Each rows represents one user, columns represent weeks/month, colors encode type of activity'),
               selectInput(   "posSeq_time_window",     "Time window:", c( "Week" = "week",  "Month" = "month")  ),
               plotOutput("usersPostSequencePlot"),
+              h3('Number of posts over time'),
+              dygraphOutput("rollerPost"),
               h3('Users and posts distribution'),
-              plotOutput("postUsers"),
-              
+              plotOutput("postUsers"),  
               h3(""),    htmlOutput("postsql"),
               textOutput("postsUsersSql"),
               textOutput("usersPostSequenceSql")

@@ -5,46 +5,72 @@ getPostSequencePlot <-  function (p, input){
   endT= as.Date(dateLimits[[2]], format = "%Y-%m-%dT%H:%M:%S.")
  
   postsTypefilter =input$postType
-  p$User_name= paste(p$first_name, p$last_name)
+  # p$User_name= paste(p$first_name, p$last_name)
+  p$User_name=paste(substr(p$first_name,1,1), '. ', substr(p$last_name,1,2),'. ')
+  p$Action_type=p$post_type
   p$time=  as.Date(p$time, format = "%Y-%m-%d %H:%M:%S")                                         
   if (postsTypefilter=='all'){  # to reduce cimbinations, replace standardLd with learnDoc and activitySubmission by activity
-    p$post_type=gsub('activitySubmission', 'activity', p$post_type)
-    p$post_type=gsub('standardLd', 'learnDoc', p$post_type)
-    p$post_type=gsub('standard', 'standard post', p$post_type)
+    p$Action_type=gsub('activitySubmission', 'activitySub', p$Action_type)
+    p$Action_type=gsub('standardLd', 'learnDoc', p$Action_type)
+    p$Action_type=gsub('standard', 'post', p$Action_type)
     #--- remove duplicates after the replacement
-    p$post_type= vapply(lapply(strsplit(p$post_type, ", "), unique), paste, character(1L), collapse = ", ")
+    p$Action_type= vapply(lapply(strsplit(p$Action_type, ", "), unique), paste, character(1L), collapse = ", ")
   }  
-  ggplot(data=p, aes(time,User_name  ))+ geom_tile(aes(fill = post_type))+
-    scale_x_date(breaks = waiver(),labels = date_format("%d %b %y"),limits = c(startT,endT) )+labs( main='')
-  
+  pl=ggplot(data=p, aes(time,User_name  ))+ geom_tile(aes(fill = Action_type))+
+    scale_x_date(breaks = waiver(),labels = date_format("%d %b %y"),limits = c(startT,endT) )+
+    theme_bw()+theme(text = element_text(15))+   labs(title="",   x ="Time", y = "User Name" )
+  print(pl)
+  ggsave (paste0('PostSequence_',input$userRolepost,'_', input$activityProfpost, '.png'), width = 30, height = 12, units = 'cm')
+  return(pl)
 }
 # ========================== individuals platform usage =====================================
 
 getUsageBarPlot<-  function(p, input) {
-  p$comment=p$comments_n; p$comments_n=NULL
-  fs=c( "satndard_posts", "learning_document","activity_submission", "activity","comment" )
-  
-  mp= melt(p[,], id.vars = c("personalflow","first_name","last_name" )) 
+  # p$2comment=p$comments_n; p$comments_n=NULL
+  names(p)[names(p)=='comments_n']='comment'
+  names(p)[names(p)=='satndard_posts']='post'
+   # p$post=p$satndard_posts; p$satndard_posts=NULL
+  fs=c( "learning_document","post","activity_submission", "activity","comment" )
+  mp= melt(p, id.vars = c("personalflow","first_name","last_name" )) 
   names(mp)[names(mp)=='variable']='type'
-  mp$user_Name= paste(mp$first_name, mp$last_name)
-  mp=filter(mp,type %in% fs) 
-  #---- barplot 
-  ggplot(mp, aes(user_Name,value)) +geom_bar(stat = "identity", aes(fill = type))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  # mp$User_name= paste(mp$first_name, mp$last_name)
+  mp$User_name=paste(substr(mp$first_name,1,1), '. ', substr(mp$last_name,1,2),'. ')
   
+  mp=filter(mp,type %in% fs) 
+  
+  #---- barplot 
+  pl=ggplot(mp, aes(User_name,value)) +geom_bar(stat = "identity", aes(fill = type))+theme_bw()+
+    theme_bw()+ theme(text = element_text(15),axis.text.x = element_blank())+labs(title="",   x =" User Name", y = "Count" )+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  print(pl)
+  ggsave (paste0('Users_usage_', input$userClustRole,'_',input$userClustProf, '.png'), width = 30, height = 12, units = 'cm')
+  return(pl)
 }
 #============================ clusters of platform usage ================================================
 getUsageClusterPlot<-  function(p, input) {
-  p$comment=p$comments_n; p$comments_n=NULL
-  fs=c( "learning_document","satndard_posts", "activity_submission", "activity","comment" )
+  names(p)[names(p)=='comments_n']='comment'
+  # p$comment=p$comments_n; p$comments_n=NULL
+  names(p)[names(p)=='satndard_posts']='post'
+  # p$post=p$satndard_posts; p$satndard_posts=NULL
+  fs=c( "learning_document","post","activity_submission", "activity","comment" )
+  
   #++++++++++++++++1 cluster users based on behaviours -----------
   pointsToCluster <- p [, fs]
   Nclust=input$users_clust_cnt
   n=nrow(pointsToCluster)
-  #------- 'CLARA' ----------
+ 
+  #------- 'HC' ----------
+  # model_clust <- hclust(dist(pointsToCluster), method="ward.D2")#"ward.D2")
+  # cluster <- cutree(model_clust, k=Nclust) # cut tree into K clusters
+   #------- 'CLARA' ----------
   clMethod='CLARA'
   sample_size=min(n,input$social_num_link);
   set.seed(123456); fitClara=clara(pointsToCluster, k=Nclust,samples=(n/sample_size)*2, sampsize=sample_size, keep.data=F)
   cluster=(fitClara$clustering); table(cluster)
+  #------- 'PAM' ----------
+  # model_clust=pam(pointsToCluster, k=Nclust)
+  # cluster=model_clust$clustering; 
+  
   #-----------2. boxplot split by cluster, scale all measures to 0-1 range
   subset2= pointsToCluster [, c(fs)]
   (cn= as.data.frame(table(cluster)))
@@ -56,8 +82,10 @@ getUsageClusterPlot<-  function(p, input) {
     subset2<- data.frame(lapply(subset2, function(y) if(is.numeric(y)) (y)/(max(y, na.rm = T)+0.001) else y)) # 
   melted<-melt(subset2,id=c("cluster")); melted$type=melted$variable; melted$variable=NULL
   
-  ggplot(melted, aes(type,value, fill=type ))+geom_boxplot( outlier.shape=1)+facet_wrap(~cluster)+
-      theme(text = element_text(30),axis.text.x = element_blank())+
-      labs(title="",   x =" ", y = "Normalized Value" )
-    
+  pl=ggplot(melted, aes(type,value, fill=type ))+geom_boxplot( outlier.shape=1)+facet_wrap(~cluster, ncol = 4)+
+    theme_bw()+ theme(text = element_text(15),axis.text.x = element_blank())+labs(title="",   x =" ", y = "Count" )
+  print(pl)# # ggsave (paste0('ClusterBoxPlot_',input$users_clust_cnt,'Clusters_',input$userClustRole,'role_',input$userClustProf,'prof_','.png'), width = 10, height = 10, units = 'cm')
+  # if (!input$NormalizeVals)
+    ggsave (paste0('Clusters_',input$userClustRole,'_', input$userClustProf, '.png'), width = 25, height = 8*(ceiling(input$users_clust_cnt/4)), units = 'cm')
+  return(pl)
 }
